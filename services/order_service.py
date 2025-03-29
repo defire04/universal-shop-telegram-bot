@@ -46,4 +46,8 @@ def get_orders_page(page, page_size):
 def get_items_for_order(order_id):
     return order_repository.get_items_for_order(order_id)
 
+def update_payment_status(order_id, status):
+    return order_repository.update_payment_status(order_id, status)
+
+
 

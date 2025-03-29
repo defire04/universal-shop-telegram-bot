@@ -1,14 +1,15 @@
 import telebot
 from telebot.types import CallbackQuery, Message, LabeledPrice, PreCheckoutQuery
-from services.product_service import get_product
-from services.order_service import create_new_order_ext
+
+from data.config import PAYMENT_TOKEN
 from keyboards.inline import make_main_menu
-from data.config import ADMIN_IDS, PAYMENT_TOKEN
+from services.order_service import create_new_order_ext, update_payment_status
+from services.product_service import get_product
 
 user_carts = {}
 temp_quantities = {}
 user_flow = {}
-payment_orders = {}  # Store order_id for payment tracking
+payment_orders = {}
 
 
 def register_cart_handlers(bot: telebot.TeleBot):
@@ -89,7 +90,6 @@ def register_cart_handlers(bot: telebot.TeleBot):
         except:
             pass
 
-        # Ask for payment method
         kb = telebot.types.InlineKeyboardMarkup()
         kb.add(
             telebot.types.InlineKeyboardButton("Оплатити зараз онлайн", callback_data="payment:online"),
@@ -109,7 +109,6 @@ def register_cart_handlers(bot: telebot.TeleBot):
         except:
             pass
 
-        # Get delivery method that was selected earlier
         delivery_method = user_flow[call.from_user.id].get("delivery_method", "")
         if delivery_method == "samov":
             finalize_order(bot, call.from_user.id, call.message.chat.id, "Самовивіз", payment_method)
@@ -148,10 +147,8 @@ def register_cart_handlers(bot: telebot.TeleBot):
         )
 
         if payment_method == "online":
-            # Process online payment
             process_payment(bot, user_id, chat_id, oid, c)
         else:
-            # Complete order for cash on delivery
             user_carts[user_id] = {}
             user_flow.pop(user_id, None)
             bot.send_message(chat_id,
@@ -167,20 +164,19 @@ def register_cart_handlers(bot: telebot.TeleBot):
         for pid, qty in cart_data.items():
             product = get_product(pid)
             if product:
-                price = int(product["price"] * 100)  # Convert to cents/kopiyky
+                price = int(product["price"] * 100)
                 item_price = price * qty
                 total_price += item_price
                 description += f"{product['name']} x{qty}, "
                 prices.append(LabeledPrice(label=f"{product['name']} x{qty}", amount=item_price))
 
-        # Save order id for tracking payment
         payment_orders[user_id] = order_id
 
         try:
             bot.send_invoice(
                 chat_id=chat_id,
                 title=title,
-                description=description[:255],  # Telegram limits description to 255 chars
+                description=description[:255],
                 invoice_payload=f"order_{order_id}",
                 provider_token=PAYMENT_TOKEN,
                 currency="UAH",
@@ -203,12 +199,20 @@ def register_cart_handlers(bot: telebot.TeleBot):
 
         if order_id:
             update_payment_status(order_id, "paid")
+
+            successful_message = (
+                f"✅ Платіж успішний! ✅\n\n"
+                f"Замовлення №{order_id} оплачено.\n"
+                f"Сума: {message.successful_payment.total_amount / 100} {message.successful_payment.currency}\n\n"
+                f"Дякуємо за покупку! Ми вже почали обробляти ваше замовлення."
+            )
+
             bot.send_message(
                 message.chat.id,
-                f"Платіж успішний! Замовлення №{order_id} оплачено. Дякуємо за покупку!",
+                successful_message,
                 reply_markup=make_main_menu()
             )
-            # Clear cart and user flow data
+
             user_carts[user_id] = {}
             user_flow.pop(user_id, None)
             payment_orders.pop(user_id, None)
