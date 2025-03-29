@@ -7,20 +7,23 @@ def get_all_orders():
     return rows
 
 
-def create_order_ext(user_id, total_price, delivery_method, address, phone, comment, full_name):
+def create_order_ext(user_id, total_price, delivery_method, address, phone, comment, full_name, payment_method,
+                     payment_status):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO orders (
-            user_id, total_price,
-            delivery_method, address,
-            phone, comment, full_name
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (user_id, total_price, delivery_method, address, phone, comment, full_name))
+
+    cur.execute(
+        """
+        INSERT INTO orders (user_id, total_price, delivery_method, address, phone, comment, full_name, payment_method, payment_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (user_id, total_price, delivery_method, address, phone, comment, full_name, payment_method, payment_status)
+    )
+
     order_id = cur.lastrowid
     conn.commit()
     conn.close()
+
     return order_id
 
 

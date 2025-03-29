@@ -15,22 +15,17 @@ logging.basicConfig(level=logging.INFO)
 
 
 async def main():
-    # Ініціалізація БД
     init_db()
 
-    # Створюємо екземпляр бота
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties())
 
-    # Створюємо диспетчер
     dp = Dispatcher()
 
-    # Підключаємо (include) наші роутери
     dp.include_router(user_router)
     dp.include_router(cart_router)
     dp.include_router(admin_router)
     dp.include_router(fallback_router)
 
-    # Запускаємо полінг
     await dp.start_polling(bot)
 
 

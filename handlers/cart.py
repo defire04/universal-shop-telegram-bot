@@ -3,8 +3,10 @@ from typing import Dict
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice, \
+    PreCheckoutQuery
 
+from data.config import PAYMENT_TOKEN
 from keyboards.inline import make_main_menu
 from services.order_service import create_new_order_ext
 from services.product_service import get_product
@@ -16,6 +18,7 @@ class OrderStates(StatesGroup):
     comment = State()
     delivery_method = State()
     address = State()
+    payment_method = State()
 
 
 cart_router = Router()
@@ -123,12 +126,10 @@ async def handle_delivery_method(callback: CallbackQuery, state: FSMContext):
 
     if method == "samov":
         await state.update_data(address="Самовивіз")
-        await finalize_order(callback.from_user.id, callback.message, state)
-
+        await show_payment_options(callback.message, state)
     elif method == "cur":
         await callback.message.answer("Вкажіть адресу для кур'єра:")
         await state.set_state(OrderStates.address)
-
     elif method in ["nova", "ukr"]:
         await callback.message.answer("Вкажіть номер відділення:")
         await state.set_state(OrderStates.address)
@@ -140,6 +141,92 @@ async def handle_delivery_method(callback: CallbackQuery, state: FSMContext):
 async def handle_address(message: Message, state: FSMContext):
     await state.update_data(address=message.text.strip())
 
+
+    await show_payment_options(message, state)
+
+
+async def show_payment_options(message: Message, state: FSMContext):
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="Оплатити зараз", callback_data="payment:now"),
+            InlineKeyboardButton(text="Оплатити при отриманні", callback_data="payment:later")
+        ]
+    ])
+
+    await message.answer("Оберіть спосіб оплати:", reply_markup=kb)
+    await state.set_state(OrderStates.payment_method)
+
+
+@cart_router.callback_query(F.data.startswith("payment:"))
+async def handle_payment_method(callback: CallbackQuery, state: FSMContext):
+    method = callback.data.split(":", 1)[1]
+    await state.update_data(payment_method=method)
+
+    try:
+        await callback.message.delete()
+    except:
+        pass
+
+    if method == "later":
+        await finalize_order(callback.from_user.id, callback.message, state)
+    else:
+        await process_payment(callback.from_user.id, callback.message, state)
+
+    await callback.answer()
+
+
+async def process_payment(user_id: int, message: Message, state: FSMContext):
+    cart = user_carts.get(user_id, {})
+    if not cart:
+        await message.answer("Кошик порожній. Скасовано.", reply_markup=make_main_menu())
+        await state.clear()
+        return
+
+    total = 0
+    cart_description = []
+
+    for pid, qty in cart.items():
+        product = get_product(pid)
+        if product:
+            subtotal = product["price"] * qty
+            total += subtotal
+            cart_description.append(f"{product['name']} x {qty}")
+
+    await state.update_data(payment_amount=total)
+
+    prices = [LabeledPrice(label="Замовлення", amount=int(total * 100))]
+
+    try:
+        await message.bot.send_invoice(
+            chat_id=user_id,
+            title="Оплата замовлення",
+            description="\n".join(cart_description[:20]) + ("\n..." if len(cart_description) > 20 else ""),
+            payload=f"order_{user_id}_{int(total * 100)}",
+            provider_token=PAYMENT_TOKEN,
+            currency="UAH",
+            prices=prices,
+            max_tip_amount=5000,
+            suggested_tip_amounts=[500, 1000, 2000],
+            start_parameter="payment",
+            protect_content=True
+        )
+    except Exception as e:
+        await message.answer(
+            f"Помилка при створенні платежу: {str(e)}\nСпробуйте пізніше або виберіть інший спосіб оплати.")
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="Оплатити при отриманні", callback_data="payment:later")]
+        ])
+        await message.answer("Ви можете обрати оплату при отриманні:", reply_markup=kb)
+
+
+@cart_router.pre_checkout_query()
+async def process_pre_checkout(pre_checkout: PreCheckoutQuery):
+    await pre_checkout.answer(ok=True)
+
+
+@cart_router.message(F.successful_payment)
+async def process_successful_payment(message: Message, state: FSMContext):
+    await state.update_data(payment_status="paid")
     await finalize_order(message.from_user.id, message, state)
 
 
@@ -156,22 +243,34 @@ async def finalize_order(user_id: int, message: Message, state: FSMContext):
     full_name = data.get("full_name", "")
     delivery_method = data.get("delivery_method", "")
     address = data.get("address", "")
+    payment_method = data.get("payment_method", "")
+    payment_status = data.get("payment_status", "pending")
+
+    if payment_method == "later":
+        payment_status = "pending"
 
     order_id = create_new_order_ext(
         user_id, cart,
         delivery_method, address,
         phone, comment,
-        full_name
+        full_name, payment_method, payment_status
     )
 
     user_carts[user_id] = {}
     await state.clear()
 
-    await message.answer(
-        f"Вітаю, замовлення №{order_id} оформлено! Дякуємо!\n"
-        f"Оператор з вами зв'яжеться для уточнення деталей.",
-        reply_markup=make_main_menu()
-    )
+    if payment_status == "paid":
+        await message.answer(
+            f"Вітаю, замовлення №{order_id} оформлено та оплачено! Дякуємо!\n"
+            f"Оператор з вами зв'яжеться для уточнення деталей.",
+            reply_markup=make_main_menu()
+        )
+    else:
+        await message.answer(
+            f"Вітаю, замовлення №{order_id} оформлено! Дякуємо!\n"
+            f"Оплата буде проведена при отриманні. Оператор з вами зв'яжеться для уточнення деталей.",
+            reply_markup=make_main_menu()
+        )
 
 
 async def show_cart(message: Message, user_id: int = None):
@@ -253,6 +352,7 @@ async def confirm_order(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer("Вкажіть ваше ПІБ (повне ім'я):")
     await state.set_state(OrderStates.full_name)
     await callback.answer()
+
 
 @cart_router.message(OrderStates.full_name)
 async def process_full_name(message: Message, state: FSMContext):

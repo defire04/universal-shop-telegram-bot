@@ -185,6 +185,8 @@ async def show_orders_page(message: Message, page: int):
                 f"Адреса: {o['address']}\n"
                 f"Телефон: {o['phone']}\n"
                 f"Коментар: {o['comment']}\n"
+                f"Спосіб оплати: {o['payment_method']}\n"
+                f"Статус оплати: {o['payment_status']}\n"
                 f"Дата: {o['created_at']}\n"
             )
 
