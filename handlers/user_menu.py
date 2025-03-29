@@ -78,11 +78,9 @@ def register_user_menu(bot: telebot.TeleBot):
             cart.show_cart(bot, message.from_user.id, message.chat.id)
 
 
+
         elif message.text == "Мої замовлення":
-
-
             orders = get_user_orders(message.from_user.id)
-
             if not orders:
                 bot.send_message(
                     message.chat.id,
@@ -91,21 +89,48 @@ def register_user_menu(bot: telebot.TeleBot):
                 )
 
             else:
+
                 txt = "Ось твої попередні замовлення:\n"
+
                 for o in orders:
-                    txt += f"№{o['id']} | сума {o['total_price']} грн | {o['created_at']}\n"
+
+                    payment_method = o.get('payment_method', 'Не вказано')
+
+                    payment_status = o.get('payment_status', 'Не вказано')
+
+                    # Format payment status more user-friendly
+
+                    if payment_status == "paid":
+
+                        payment_status = "Оплачено"
+
+                    elif payment_status == "pending":
+
+                        payment_status = "Очікується"
+
+                    txt += f"№{o['id']} | сума {o['total_price']} грн | {payment_method} ({payment_status}) | {o['created_at']}\n"
+
                     items = get_items_for_order(o["id"])
+
                     if items:
+
                         txt += "Товари:\n"
+
                         for it in items:
                             subtotal = it["product_price"] * it["quantity"]
+
                             txt += f"  {it['product_name']} x {it['quantity']} = {subtotal} грн\n"
+
                     txt += "--------------------------------\n"
+
                 txt += "\nЯкщо маєш питання, пиши нам!"
 
                 bot.send_message(
+
                     message.chat.id,
+
                     txt,
+
                     reply_markup=main_reply_keyboard(message.from_user.id))
 
         elif message.text == "Адмін-меню":

@@ -2,7 +2,7 @@ from repositories import order_repository
 from services.product_service import get_product
 
 
-def create_new_order_ext(user_id, cart_data, delivery_method, address, phone, comment, full_name):
+def create_new_order_ext(user_id, cart_data, delivery_method, address, phone, comment, full_name, payment_method, payment_status='pending'):
     total_price = 0.0
     for pid, qty in cart_data.items():
         prod = get_product(pid)
@@ -12,7 +12,8 @@ def create_new_order_ext(user_id, cart_data, delivery_method, address, phone, co
     oid = order_repository.create_order_ext(
         user_id, total_price,
         delivery_method, address,
-        phone, comment, full_name
+        phone, comment, full_name,
+        payment_method, payment_status
     )
 
     for pid, qty in cart_data.items():
@@ -44,3 +45,5 @@ def get_orders_page(page, page_size):
 
 def get_items_for_order(order_id):
     return order_repository.get_items_for_order(order_id)
+
+

@@ -1,16 +1,17 @@
 import telebot
-from telebot.types import CallbackQuery, Message
+from telebot.types import CallbackQuery, Message, LabeledPrice, PreCheckoutQuery
 from services.product_service import get_product
 from services.order_service import create_new_order_ext
 from keyboards.inline import make_main_menu
-from data.config import ADMIN_IDS
+from data.config import ADMIN_IDS, PAYMENT_TOKEN
 
 user_carts = {}
 temp_quantities = {}
 user_flow = {}
+payment_orders = {}  # Store order_id for payment tracking
+
 
 def register_cart_handlers(bot: telebot.TeleBot):
-
     @bot.callback_query_handler(func=lambda call: call.data.startswith("viewprod:"))
     def callback_view_product(call: CallbackQuery):
         pid = int(call.data.split(":")[1])
@@ -83,32 +84,47 @@ def register_cart_handlers(bot: telebot.TeleBot):
             user_flow[call.from_user.id] = {}
         user_flow[call.from_user.id]["delivery_method"] = m
 
-        if m == "samov":
-            try:
-                bot.delete_message(call.message.chat.id, call.message.message_id)
-            except:
-                pass
-            finalize_order(bot, call.from_user.id, call.message.chat.id, "Самовивіз")
-        elif m == "cur":
-            try:
-                bot.delete_message(call.message.chat.id, call.message.message_id)
-            except:
-                pass
+        try:
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+        except:
+            pass
+
+        # Ask for payment method
+        kb = telebot.types.InlineKeyboardMarkup()
+        kb.add(
+            telebot.types.InlineKeyboardButton("Оплатити зараз онлайн", callback_data="payment:online"),
+            telebot.types.InlineKeyboardButton("Оплатити при отриманні", callback_data="payment:offline")
+        )
+        bot.send_message(call.message.chat.id, "Оберіть спосіб оплати:", reply_markup=kb)
+
+    @bot.callback_query_handler(func=lambda call: call.data.startswith("payment:"))
+    def handle_payment_method(call: CallbackQuery):
+        payment_method = call.data.split(":", 1)[1]
+        if call.from_user.id not in user_flow:
+            user_flow[call.from_user.id] = {}
+        user_flow[call.from_user.id]["payment_method"] = payment_method
+
+        try:
+            bot.delete_message(call.message.chat.id, call.message.message_id)
+        except:
+            pass
+
+        # Get delivery method that was selected earlier
+        delivery_method = user_flow[call.from_user.id].get("delivery_method", "")
+        if delivery_method == "samov":
+            finalize_order(bot, call.from_user.id, call.message.chat.id, "Самовивіз", payment_method)
+        elif delivery_method == "cur":
             ms = bot.send_message(call.message.chat.id, "Вкажіть адресу для кур'єра:")
-            bot.register_next_step_handler(ms, lambda mm: handle_address(bot, mm, "cur"))
-        elif m in ["nova", "ukr"]:
-            try:
-                bot.delete_message(call.message.chat.id, call.message.message_id)
-            except:
-                pass
+            bot.register_next_step_handler(ms, lambda mm: handle_address(bot, mm, "cur", payment_method))
+        elif delivery_method in ["nova", "ukr"]:
             ms2 = bot.send_message(call.message.chat.id, "Вкажіть номер відділення:")
-            bot.register_next_step_handler(ms2, lambda mm: handle_address(bot, mm, m))
+            bot.register_next_step_handler(ms2, lambda mm: handle_address(bot, mm, delivery_method, payment_method))
 
-    def handle_address(bot: telebot.TeleBot, msg: Message, method):
+    def handle_address(bot: telebot.TeleBot, msg: Message, method, payment_method):
         user_flow[msg.from_user.id]["address"] = msg.text.strip()
-        finalize_order(bot, msg.from_user.id, msg.chat.id, method)
+        finalize_order(bot, msg.from_user.id, msg.chat.id, method, payment_method)
 
-    def finalize_order(bot: telebot.TeleBot, user_id: int, chat_id: int, method):
+    def finalize_order(bot: telebot.TeleBot, user_id: int, chat_id: int, method, payment_method):
         c = user_carts.get(user_id, {})
         if not c:
             bot.send_message(chat_id, "Кошик порожній. Скасовано.", reply_markup=make_main_menu())
@@ -122,16 +138,81 @@ def register_cart_handlers(bot: telebot.TeleBot):
         else:
             addr = user_flow[user_id].get("address", "")
 
-        from services.order_service import create_new_order_ext
+        payment_status = "pending"
         oid = create_new_order_ext(
             user_id, c,
             method, addr,
             phone, comment,
-            fn
+            fn, payment_method,
+            payment_status
         )
-        user_carts[user_id] = {}
-        user_flow.pop(user_id, None)
-        bot.send_message(chat_id, f"Вітаю, замовлення №{oid} оформлено! Дякуємо!\n Оператор з вами зв'яжеться для уточнення деталей.", reply_markup=make_main_menu())
+
+        if payment_method == "online":
+            # Process online payment
+            process_payment(bot, user_id, chat_id, oid, c)
+        else:
+            # Complete order for cash on delivery
+            user_carts[user_id] = {}
+            user_flow.pop(user_id, None)
+            bot.send_message(chat_id,
+                             f"Вітаю, замовлення №{oid} оформлено! Дякуємо!\nОплата при отриманні. Оператор з вами зв'яжеться для уточнення деталей.",
+                             reply_markup=make_main_menu())
+
+    def process_payment(bot: telebot.TeleBot, user_id: int, chat_id: int, order_id: int, cart_data):
+        total_price = 0
+        title = f"Замовлення №{order_id}"
+        description = "Товари: "
+        prices = []
+
+        for pid, qty in cart_data.items():
+            product = get_product(pid)
+            if product:
+                price = int(product["price"] * 100)  # Convert to cents/kopiyky
+                item_price = price * qty
+                total_price += item_price
+                description += f"{product['name']} x{qty}, "
+                prices.append(LabeledPrice(label=f"{product['name']} x{qty}", amount=item_price))
+
+        # Save order id for tracking payment
+        payment_orders[user_id] = order_id
+
+        try:
+            bot.send_invoice(
+                chat_id=chat_id,
+                title=title,
+                description=description[:255],  # Telegram limits description to 255 chars
+                invoice_payload=f"order_{order_id}",
+                provider_token=PAYMENT_TOKEN,
+                currency="UAH",
+                prices=prices,
+                start_parameter="payment"
+            )
+        except Exception as e:
+            bot.send_message(chat_id,
+                             f"Помилка при створенні платежу: {str(e)}\nВаше замовлення збережено. Оператор зв'яжеться з Вами для уточнення деталей оплати.")
+            update_payment_status(order_id, "error")
+
+    @bot.pre_checkout_query_handler(func=lambda query: True)
+    def process_pre_checkout(pre_checkout_query: PreCheckoutQuery):
+        bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+    @bot.message_handler(content_types=['successful_payment'])
+    def successful_payment(message: Message):
+        user_id = message.from_user.id
+        order_id = payment_orders.get(user_id)
+
+        if order_id:
+            update_payment_status(order_id, "paid")
+            bot.send_message(
+                message.chat.id,
+                f"Платіж успішний! Замовлення №{order_id} оплачено. Дякуємо за покупку!",
+                reply_markup=make_main_menu()
+            )
+            # Clear cart and user flow data
+            user_carts[user_id] = {}
+            user_flow.pop(user_id, None)
+            payment_orders.pop(user_id, None)
+
 
 def show_cart(bot: telebot.TeleBot, user_id: int, chat_id: int):
     c = user_carts.get(user_id, {})
@@ -154,6 +235,7 @@ def show_cart(bot: telebot.TeleBot, user_id: int, chat_id: int):
     kb.add(telebot.types.InlineKeyboardButton("Оформити замовлення", callback_data="menu_order"))
     kb.add(telebot.types.InlineKeyboardButton("Назад", callback_data="go_main"))
     bot.send_message(chat_id, text, reply_markup=kb)
+
 
 def send_product_view(bot: telebot.TeleBot, chat_id: int, prod, qty: int):
     brand = prod['brand']
@@ -182,6 +264,7 @@ def send_updated_product_view(bot: telebot.TeleBot, chat_id: int, message_id: in
         pass
     send_product_view(bot, chat_id, prod, qty)
 
+
 def confirm_order(bot: telebot.TeleBot, call: CallbackQuery):
     c = user_carts.get(call.from_user.id, {})
     if not c:
@@ -196,15 +279,18 @@ def confirm_order(bot: telebot.TeleBot, call: CallbackQuery):
     msg = bot.send_message(call.message.chat.id, "Вкажіть ваше ПІБ (повне ім'я):")
     bot.register_next_step_handler(msg, lambda m: ask_fio(bot, m))
 
+
 def ask_fio(bot: telebot.TeleBot, msg: Message):
     user_flow[msg.from_user.id]["full_name"] = msg.text.strip()
     nxt = bot.send_message(msg.chat.id, "Вкажіть свій номер телефону:")
     bot.register_next_step_handler(nxt, lambda mm: ask_comment(bot, mm))
 
+
 def ask_comment(bot: telebot.TeleBot, msg: Message):
     user_flow[msg.from_user.id]["phone"] = msg.text.strip()
     nxt = bot.send_message(msg.chat.id, "Якщо маєте коментар, напишіть тут (або «Немає»):")
     bot.register_next_step_handler(nxt, lambda mm: ask_delivery_method(bot, mm))
+
 
 def ask_delivery_method(bot: telebot.TeleBot, msg: Message):
     user_flow[msg.from_user.id]["comment"] = msg.text.strip()

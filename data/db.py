@@ -30,18 +30,20 @@ def init_db():
     """)
 
     cur.execute("""
-       CREATE TABLE IF NOT EXISTS orders (
-           id INTEGER PRIMARY KEY AUTOINCREMENT,
-           user_id INTEGER NOT NULL,
-           total_price REAL,
-           delivery_method TEXT,
-           address TEXT,
-           phone TEXT,
-           comment TEXT,
-           full_name TEXT,
-           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-       );
-       """)
+    CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        total_price REAL,
+        delivery_method TEXT,
+        address TEXT,
+        phone TEXT,
+        comment TEXT,
+        full_name TEXT,
+        payment_method TEXT,  
+        payment_status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
 
     cur.execute("""
     CREATE TABLE IF NOT EXISTS order_items (

@@ -7,17 +7,18 @@ def get_all_orders():
     return rows
 
 
-def create_order_ext(user_id, total_price, delivery_method, address, phone, comment, full_name):
+def create_order_ext(user_id, total_price, delivery_method, address, phone, comment, full_name, payment_method, payment_status='pending'):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO orders (
             user_id, total_price,
             delivery_method, address,
-            phone, comment, full_name
+            phone, comment, full_name,
+            payment_method, payment_status
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (user_id, total_price, delivery_method, address, phone, comment, full_name))
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, total_price, delivery_method, address, phone, comment, full_name, payment_method, payment_status))
     order_id = cur.lastrowid
     conn.commit()
     conn.close()
@@ -106,3 +107,24 @@ def get_items_for_order(order_id):
     rows = cur.fetchall()
     conn.close()
     return rows
+
+
+def update_payment_status(order_id, status):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE orders
+        SET payment_status = ?
+        WHERE id = ?
+    """, (status, order_id))
+    conn.commit()
+    conn.close()
+
+
+def get_order_by_id(order_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM orders WHERE id=?", (order_id,))
+    row = cur.fetchone()
+    conn.close()
+    return row

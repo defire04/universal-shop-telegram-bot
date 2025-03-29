@@ -114,6 +114,8 @@ def register_admin_menu(bot: telebot.TeleBot):
                     f"Адреса: {o['address']}\n"
                     f"Телефон: {o['phone']}\n"
                     f"Коментар: {o['comment']}\n"
+                    f"Спосіб оплати: {o.get('payment_method', 'Не вказано')}\n"
+                    f"Статус оплати: {o.get('payment_status', 'Не вказано')}\n"
                     f"Дата: {o['created_at']}\n"
                 )
 
