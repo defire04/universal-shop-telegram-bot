@@ -40,7 +40,7 @@ fish-shop-telebot/
 ├── requirements.txt
 ├── Dockerfile
 ├── data/
-│   ├── config.origin
+│   ├── config.py
 │   └── db.py
 ├── repositories/
 │   ├── product_repository.py

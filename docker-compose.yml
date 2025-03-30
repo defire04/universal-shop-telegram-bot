@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+
+  fish-shop-telebot:
+    container_name: fish-shop-telebot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      BOT_TOKEN: ${FISH_TOKEN}
+      DB_PATH: "/data/database.db"
+      ADMIN_IDS: ${ADMIN_IDS}
+      PAYMENT_TOKEN: ${FISH_PAYMENT_TOKEN}
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+
+
+  quad-bike-shop-aiogram:
+    container_name: quad-bike-shop-aiogram
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      BOT_TOKEN: ${QUAD_BOT_TOKEN}
+      DB_PATH: "/data/database2.db"
+      ADMIN_IDS: ${ADMIN_IDS}
+      PAYMENT_TOKEN: ${QUAD_PAYMENT_TOKEN}
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+
