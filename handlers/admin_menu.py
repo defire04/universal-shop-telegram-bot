@@ -106,6 +106,17 @@ def register_admin_menu(bot: telebot.TeleBot):
         else:
             text = f"Сторінка {page + 1} із {((total - 1) // page_size) + 1}\n\n"
             for o in page_orders:
+                o_dict = dict(o)
+
+                payment_method = o_dict.get('payment_method', 'Не вказано')
+                payment_status = o_dict.get('payment_status', 'Не вказано')
+
+                # Format payment status more user-friendly
+                if payment_status == "paid":
+                    payment_status = "Сплачено"
+                elif payment_status == "pending":
+                    payment_status = "Очікується"
+
                 text += (
                     f"Замовлення №{o['id']}\n"
                     f"Ім'я: {o['full_name']}\n"
@@ -114,8 +125,8 @@ def register_admin_menu(bot: telebot.TeleBot):
                     f"Адреса: {o['address']}\n"
                     f"Телефон: {o['phone']}\n"
                     f"Коментар: {o['comment']}\n"
-                    f"Спосіб оплати: {o.get('payment_method', 'Не вказано')}\n"
-                    f"Статус оплати: {o.get('payment_status', 'Не вказано')}\n"
+                    f"Спосіб оплати: {payment_method}\n"
+                    f"Статус оплати: {payment_status}\n"
                     f"Дата: {o['created_at']}\n"
                 )
 
