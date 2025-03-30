@@ -1,6 +1,45 @@
+
 version: "3.8"
 
+#services:
+#
+#  sqlite-web-fish-shop-telebot:
+#    container_name: sqlite-web-fish-shop-telebot
+#    image: coleifer/sqlite-web
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      - SQLITE_DATABASE=/sqlite/fish_shop.db
+#    volumes:
+#      - sqlite_data:/sqlite
+#    restart: unless-stopped
+#    command: sqlite_web --host=0.0.0.0 --port=8080 --no-browser /sqlite/fish_shop.db
+#
+#  sqlite-web-quad-bike-shop:
+#    container_name: sqlite-web-quad-bike-shop
+#    image: coleifer/sqlite-web
+#    ports:
+#      - "8081:8080"
+#    environment:
+#      - SQLITE_DATABASE=/sqlite/quad_shop.db
+#    volumes:
+#      - sqlite_data:/sqlite
+#    restart: unless-stopped
+#    command: sqlite_web --host=0.0.0.0 --port=8080 --no-browser /sqlite/quad_shop.db
 services:
+  sqlite-browser:
+    container_name: sqlite-browser
+    image: linuxserver/sqlitebrowser:latest
+    ports:
+      - "8000:3000"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Kiev
+    volumes:
+      - sqlite_data:/data
+    restart: unless-stopped
+
 
   fish-shop-telebot:
     container_name: fish-shop-telebot
@@ -9,12 +48,12 @@ services:
       dockerfile: Dockerfile
     environment:
       BOT_TOKEN: ${FISH_TOKEN}
-      DB_PATH: "/data/database.db"
+      DB_PATH: "/sqlite/fish_shop.db"
       ADMIN_IDS: ${ADMIN_IDS}
       PAYMENT_TOKEN: ${FISH_PAYMENT_TOKEN}
     restart: unless-stopped
     volumes:
-      - ./data:/data
+      - sqlite_data:/sqlite
 
 
   quad-bike-shop-aiogram:
@@ -24,10 +63,14 @@ services:
       dockerfile: Dockerfile
     environment:
       BOT_TOKEN: ${QUAD_BOT_TOKEN}
-      DB_PATH: "/data/database2.db"
+      DB_PATH: "/sqlite/quad_shop.db"
       ADMIN_IDS: ${ADMIN_IDS}
       PAYMENT_TOKEN: ${QUAD_PAYMENT_TOKEN}
     restart: unless-stopped
     volumes:
-      - ./data:/data
+      - sqlite_data:/sqlite
+
+
+volumes:
+  sqlite_data:
 
