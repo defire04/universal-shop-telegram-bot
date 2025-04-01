@@ -112,3 +112,32 @@ Adjust the `BOT_TOKEN` by editing `data/config.py` or using an environment varia
    * Remove products by ID
    * View orders (with contact info)
    * Basic stats (number of orders, total sum)
+
+
+
+# Structure plan for the admin folder:
+admin/
+├── __init__.py         - Exports the router and initializes handlers
+├── router.py           - Main router definition and shared variables
+├── product_manage.py   - Product management (add, list, delete)
+├── order_manage.py     - Orders listing and statistics
+└── state.py            - AdminStates definition
+
+# Structure plan for the cart folder:
+cart/
+├── __init__.py         - Exports the router and initializes handlers
+├── router.py           - Main router definition and shared variables
+├── product_view.py     - Product view and quantity handlers
+├── cart_management.py  - Cart view and management (clear, etc.)
+├── order_process.py    - Order processing and payment
+└── state.py            - OrderStates definition
+
+# Structure plan for the user folder:
+users/
+├── __init__.py - Exports the router and initializes handlers
+├── router.py - Main router definition and shared variables
+├── start.py - Start command and greeting handlers
+├── main_menu.py - Main menu navigation
+├── catalog.py - Catalog browsing and brand selection
+├── orders.py - Order history viewing 
+└── admin_access.py - Admin menu access check

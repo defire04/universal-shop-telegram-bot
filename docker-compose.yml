@@ -1,31 +1,6 @@
 
 version: "3.8"
 
-#services:
-#
-#  sqlite-web-fish-shop-telebot:
-#    container_name: sqlite-web-fish-shop-telebot
-#    image: coleifer/sqlite-web
-#    ports:
-#      - "8080:8080"
-#    environment:
-#      - SQLITE_DATABASE=/sqlite/fish_shop.db
-#    volumes:
-#      - sqlite_data:/sqlite
-#    restart: unless-stopped
-#    command: sqlite_web --host=0.0.0.0 --port=8080 --no-browser /sqlite/fish_shop.db
-#
-#  sqlite-web-quad-bike-shop:
-#    container_name: sqlite-web-quad-bike-shop
-#    image: coleifer/sqlite-web
-#    ports:
-#      - "8081:8080"
-#    environment:
-#      - SQLITE_DATABASE=/sqlite/quad_shop.db
-#    volumes:
-#      - sqlite_data:/sqlite
-#    restart: unless-stopped
-#    command: sqlite_web --host=0.0.0.0 --port=8080 --no-browser /sqlite/quad_shop.db
 services:
   sqlite-browser:
     container_name: sqlite-browser

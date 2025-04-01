@@ -6,10 +6,10 @@ from aiogram.client.bot import DefaultBotProperties
 
 from data.config import BOT_TOKEN
 from data.db import init_db
-from handlers.admin_menu import admin_router
+from handlers.admin import admin_router
 from handlers.cart import cart_router
 from handlers.fallback import fallback_router
-from handlers.user_menu import user_router
+from handlers.user import user_router
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,10 +21,13 @@ async def main():
 
     dp = Dispatcher()
 
+
     dp.include_router(user_router)
     dp.include_router(cart_router)
     dp.include_router(admin_router)
     dp.include_router(fallback_router)
+
+
 
     await dp.start_polling(bot)
 

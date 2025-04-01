@@ -1,116 +1,14 @@
-from typing import Dict
-
-from aiogram import Router, F
+from aiogram import F
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice, \
     PreCheckoutQuery
 
 from data.config import PAYMENT_TOKEN
+from handlers.cart.router import cart_router, user_carts
+from handlers.cart.states import OrderStates
 from keyboards.inline import make_main_menu
 from services.order_service import create_new_order_ext
 from services.product_service import get_product
-
-
-class OrderStates(StatesGroup):
-    full_name = State()
-    phone = State()
-    comment = State()
-    delivery_method = State()
-    address = State()
-    payment_method = State()
-
-
-cart_router = Router()
-
-user_carts: Dict[int, Dict[int, int]] = {}
-temp_quantities: Dict[tuple, int] = {}
-user_flow: Dict[int, Dict[str, str]] = {}
-
-
-@cart_router.callback_query(F.data.startswith("viewprod:"))
-async def callback_view_product(callback: CallbackQuery):
-    pid = int(callback.data.split(":")[1])
-    product = get_product(pid)
-
-    if not product:
-        await callback.answer("Товар не знайдено.")
-        return
-
-    temp_quantities[(callback.from_user.id, pid)] = 1
-
-    try:
-        await callback.message.delete()
-    except:
-        pass
-
-    await send_product_view(callback.message, product, 1)
-    await callback.answer()
-
-
-@cart_router.callback_query(F.data.startswith("qty:"))
-async def callback_change_quantity(callback: CallbackQuery):
-    parts = callback.data.split(":")
-    action = parts[1]
-    pid = int(parts[2])
-    key = (callback.from_user.id, pid)
-
-    if key not in temp_quantities:
-        temp_quantities[key] = 1
-
-    qty = temp_quantities[key]
-    product = get_product(pid)
-
-    if not product:
-        await callback.answer("Товар не знайдено.")
-        return
-
-    if action == "inc":
-        qty += 1
-        temp_quantities[key] = qty
-        await callback.answer(f"Кількість: {qty}")
-        await send_updated_product_view(callback.message, product, qty)
-
-    elif action == "dec":
-        if qty > 1:
-            qty -= 1
-            temp_quantities[key] = qty
-            await callback.answer(f"Кількість: {qty}")
-            await send_updated_product_view(callback.message, product, qty)
-        else:
-            await callback.answer("Мінімальна кількість 1")
-
-    elif action == "add":
-        if callback.from_user.id not in user_carts:
-            user_carts[callback.from_user.id] = {}
-
-        if pid not in user_carts[callback.from_user.id]:
-            user_carts[callback.from_user.id][pid] = 0
-
-        user_carts[callback.from_user.id][pid] += qty
-        temp_quantities.pop(key, None)
-
-        await callback.answer(f"Додано в кошик x{qty}")
-
-        try:
-            await callback.message.delete()
-        except:
-            pass
-
-        await callback.message.answer("Товар додано до кошика!", reply_markup=make_main_menu())
-
-
-@cart_router.callback_query(F.data == "cart_clear")
-async def on_cart_clear(callback: CallbackQuery):
-    user_carts[callback.from_user.id] = {}
-    await callback.answer("Кошик очищено!")
-
-    try:
-        await callback.message.delete()
-    except:
-        pass
-
-    await callback.message.answer("Кошик очищено.", reply_markup=make_main_menu())
 
 
 @cart_router.callback_query(F.data.startswith("delivery:"))
@@ -140,8 +38,6 @@ async def handle_delivery_method(callback: CallbackQuery, state: FSMContext):
 @cart_router.message(OrderStates.address)
 async def handle_address(message: Message, state: FSMContext):
     await state.update_data(address=message.text.strip())
-
-
     await show_payment_options(message, state)
 
 
@@ -271,65 +167,6 @@ async def finalize_order(user_id: int, message: Message, state: FSMContext):
             f"Оплата буде проведена при отриманні. Оператор з вами зв'яжеться для уточнення деталей.",
             reply_markup=make_main_menu()
         )
-
-
-async def show_cart(message: Message, user_id: int = None):
-    if user_id is None:
-        user_id = message.from_user.id
-
-    cart = user_carts.get(user_id, {})
-
-    if not cart:
-        await message.answer("Ваш кошик порожній.", reply_markup=make_main_menu())
-        return
-
-    text = "Ваш кошик:\n"
-    total = 0
-
-    for pid, qty in cart.items():
-        product = get_product(pid)
-        if product:
-            subtotal = product["price"] * qty
-            total += subtotal
-            text += f"{product['name']} x {qty} = {subtotal} грн\n"
-
-    text += f"\nЗагальна сума: {total} грн"
-
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Очистити кошик", callback_data="cart_clear")],
-        [InlineKeyboardButton(text="Оформити замовлення", callback_data="menu_order")],
-        [InlineKeyboardButton(text="Назад", callback_data="go_main")]
-    ])
-
-    await message.answer(text, reply_markup=kb)
-
-
-async def send_product_view(message: Message, product: dict, qty: int):
-    brand = product['brand']
-    caption = f"<b>{product['name']}</b> ({brand})\nЦіна: {product['price']} грн\n\nКількість: {qty}"
-
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="–", callback_data=f"qty:dec:{product['id']}"),
-            InlineKeyboardButton(text=str(qty), callback_data="none"),
-            InlineKeyboardButton(text="+", callback_data=f"qty:inc:{product['id']}")
-        ],
-        [InlineKeyboardButton(text="Додати в кошик", callback_data=f"qty:add:{product['id']}")],
-        [InlineKeyboardButton(text="Назад", callback_data=f"back_to_brand:{brand}")]
-    ])
-
-    if product['photo_url']:
-        await message.answer_photo(product['photo_url'], caption=caption, parse_mode="HTML", reply_markup=kb)
-    else:
-        await message.answer(caption, parse_mode="HTML", reply_markup=kb)
-
-
-async def send_updated_product_view(message: Message, product: dict, qty: int):
-    try:
-        await message.delete()
-    except:
-        pass
-    await send_product_view(message, product, qty)
 
 
 async def confirm_order(callback: CallbackQuery, state: FSMContext):
