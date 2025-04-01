@@ -1,9 +1,8 @@
-
 from aiogram import F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
-from handlers.cart.router  import cart_router, temp_quantities, user_carts
-from keyboards.inline import make_main_menu
+from handlers.cart.cart_management import show_cart
+from handlers.cart.router import cart_router, temp_quantities, user_carts
 from services.product_service import get_product
 
 
@@ -13,7 +12,7 @@ async def callback_view_product(callback: CallbackQuery):
     product = get_product(pid)
 
     if not product:
-        await callback.answer("Товар не знайдено.")
+        await callback.answer("❌ Товар не знайдено.")
         return
 
     temp_quantities[(callback.from_user.id, pid)] = 1
@@ -41,23 +40,23 @@ async def callback_change_quantity(callback: CallbackQuery):
     product = get_product(pid)
 
     if not product:
-        await callback.answer("Товар не знайдено.")
+        await callback.answer("❌ Товар не знайдено.")
         return
 
     if action == "inc":
         qty += 1
         temp_quantities[key] = qty
-        await callback.answer(f"Кількість: {qty}")
+        await callback.answer(f"🔢 Кількість: {qty}")
         await send_updated_product_view(callback.message, product, qty)
 
     elif action == "dec":
         if qty > 1:
             qty -= 1
             temp_quantities[key] = qty
-            await callback.answer(f"Кількість: {qty}")
+            await callback.answer(f"🔢 Кількість: {qty}")
             await send_updated_product_view(callback.message, product, qty)
         else:
-            await callback.answer("Мінімальна кількість 1")
+            await callback.answer("⚠️ Мінімальна кількість - 1")
 
     elif action == "add":
         if callback.from_user.id not in user_carts:
@@ -69,28 +68,52 @@ async def callback_change_quantity(callback: CallbackQuery):
         user_carts[callback.from_user.id][pid] += qty
         temp_quantities.pop(key, None)
 
-        await callback.answer(f"Додано в кошик x{qty}")
+        await callback.answer(f"✅ Додано в кошик x{qty}")
 
         try:
             await callback.message.delete()
         except:
             pass
 
-        await callback.message.answer("Товар додано до кошика!", reply_markup=make_main_menu())
+        kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🛒 Перейти до кошика", callback_data="cart_view")],
+            [InlineKeyboardButton(text="🔙 Продовжити покупки", callback_data="go_main")]
+        ])
 
+        await callback.message.answer("✅ Товар успішно додано до кошика!", reply_markup=kb)
+
+
+@cart_router.callback_query(F.data == "cart_view")
+async def show_cart_callback(callback: CallbackQuery):
+
+
+    try:
+        await callback.message.delete()
+    except:
+        pass
+
+    await show_cart(callback.message, callback.from_user.id)
+    await callback.answer()
 
 async def send_product_view(message: Message, product: dict, qty: int):
     brand = product['brand']
-    caption = f"<b>{product['name']}</b> ({brand})\nЦіна: {product['price']} грн\n\nКількість: {qty}"
+    price = product['price']
+    total_price = price * qty
+
+    caption = f"<b>🛍️ {product['name']}</b>\n"
+    caption += f"<i>Бренд: {brand}</i>\n\n"
+    caption += f"💰 Ціна: {price} грн\n"
+    caption += f"🔢 Кількість: {qty}\n"
+    caption += f"💵 Загалом: {total_price} грн"
 
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="–", callback_data=f"qty:dec:{product['id']}"),
-            InlineKeyboardButton(text=str(qty), callback_data="none"),
-            InlineKeyboardButton(text="+", callback_data=f"qty:inc:{product['id']}")
+            InlineKeyboardButton(text="➖", callback_data=f"qty:dec:{product['id']}"),
+            InlineKeyboardButton(text=f"{qty} шт", callback_data="none"),
+            InlineKeyboardButton(text="➕", callback_data=f"qty:inc:{product['id']}")
         ],
-        [InlineKeyboardButton(text="Додати в кошик", callback_data=f"qty:add:{product['id']}")],
-        [InlineKeyboardButton(text="Назад", callback_data=f"back_to_brand:{brand}")]
+        [InlineKeyboardButton(text="🛒 Додати в кошик", callback_data=f"qty:add:{product['id']}")],
+        [InlineKeyboardButton(text="🔙 Назад", callback_data=f"back_to_brand:{brand}")]
     ])
 
     if product['photo_url']:

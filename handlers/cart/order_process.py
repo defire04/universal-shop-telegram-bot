@@ -1,3 +1,4 @@
+import re
 from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, LabeledPrice, \
@@ -26,30 +27,67 @@ async def handle_delivery_method(callback: CallbackQuery, state: FSMContext):
         await state.update_data(address="Самовивіз")
         await show_payment_options(callback.message, state)
     elif method == "cur":
-        await callback.message.answer("Вкажіть адресу для кур'єра:")
+        await callback.message.answer(
+            "📍 Вкажіть адресу для доставки кур'єром:\n\n<i>Приклад: м. Київ, вул. Хрещатик, 1, кв. 10</i>",
+            parse_mode="HTML")
         await state.set_state(OrderStates.address)
-    elif method in ["nova", "ukr"]:
-        await callback.message.answer("Вкажіть номер відділення:")
+    elif method == "nova":
+        await callback.message.answer(
+            "📮 Вкажіть номер відділення Нової Пошти:\n\n<i>Приклад: 33, 45, 100</i>",
+            parse_mode="HTML")
+        await state.set_state(OrderStates.address)
+    elif method == "ukr":
+        await callback.message.answer(
+            "📮 Вкажіть номер відділення УкрПошти:\n\n<i>Приклад: 01001, 79000</i>",
+            parse_mode="HTML")
         await state.set_state(OrderStates.address)
 
     await callback.answer()
 
-
 @cart_router.message(OrderStates.address)
 async def handle_address(message: Message, state: FSMContext):
-    await state.update_data(address=message.text.strip())
+    address = message.text.strip()
+    data = await state.get_data()
+    delivery_method = data.get("delivery_method", "")
+
+    if delivery_method == "cur":
+        if len(address) < 10:
+            await message.answer(
+                "❌ Адреса занадто коротка. Будь ласка, вкажіть повну адресу доставки.\n\n<i>Приклад: м. Київ, вул. Хрещатик, 1, кв. 10</i>",
+                parse_mode="HTML")
+            return
+    elif delivery_method == "nova":
+        # Для Нової Пошти достатньо номера відділення
+        if not re.search(r'\d+', address):
+            await message.answer(
+                "❌ Необхідно вказати числовий номер відділення Нової Пошти.\n\n<i>Приклад: 33, 45, 100</i>",
+                parse_mode="HTML")
+            return
+    elif delivery_method == "ukr":
+        # Для УкрПошти або номер відділення, або індекс
+        if not re.search(r'\d+', address):
+            await message.answer(
+                "❌ Необхідно вказати числовий номер відділення або індекс УкрПошти.\n\n<i>Приклад: 01001, 79000</i>",
+                parse_mode="HTML")
+            return
+
+    await state.update_data(address=address)
     await show_payment_options(message, state)
+
+
+
+
 
 
 async def show_payment_options(message: Message, state: FSMContext):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="Оплатити зараз", callback_data="payment:now"),
-            InlineKeyboardButton(text="Оплатити при отриманні", callback_data="payment:later")
+            InlineKeyboardButton(text="💳 Оплатити зараз", callback_data="payment:now"),
+            InlineKeyboardButton(text="💵 Оплатити при отриманні", callback_data="payment:later")
         ]
     ])
 
-    await message.answer("Оберіть спосіб оплати:", reply_markup=kb)
+    await message.answer("💰 Оберіть спосіб оплати:", reply_markup=kb)
     await state.set_state(OrderStates.payment_method)
 
 
@@ -74,7 +112,7 @@ async def handle_payment_method(callback: CallbackQuery, state: FSMContext):
 async def process_payment(user_id: int, message: Message, state: FSMContext):
     cart = user_carts.get(user_id, {})
     if not cart:
-        await message.answer("Кошик порожній. Скасовано.", reply_markup=make_main_menu())
+        await message.answer("🛒 Кошик порожній. Замовлення скасовано.", reply_markup=make_main_menu())
         await state.clear()
         return
 
@@ -95,7 +133,7 @@ async def process_payment(user_id: int, message: Message, state: FSMContext):
     try:
         await message.bot.send_invoice(
             chat_id=user_id,
-            title="Оплата замовлення",
+            title="🛍️ Оплата замовлення",
             description="\n".join(cart_description[:20]) + ("\n..." if len(cart_description) > 20 else ""),
             payload=f"order_{user_id}_{int(total * 100)}",
             provider_token=PAYMENT_TOKEN,
@@ -108,11 +146,11 @@ async def process_payment(user_id: int, message: Message, state: FSMContext):
         )
     except Exception as e:
         await message.answer(
-            f"Помилка при створенні платежу: {str(e)}\nСпробуйте пізніше або виберіть інший спосіб оплати.")
+            f"❌ Помилка при створенні платежу: {str(e)}\nСпробуйте пізніше або виберіть інший спосіб оплати.")
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="Оплатити при отриманні", callback_data="payment:later")]
+            [InlineKeyboardButton(text="💵 Оплатити при отриманні", callback_data="payment:later")]
         ])
-        await message.answer("Ви можете обрати оплату при отриманні:", reply_markup=kb)
+        await message.answer("💡 Ви можете обрати оплату при отриманні:", reply_markup=kb)
 
 
 @cart_router.pre_checkout_query()
@@ -129,7 +167,7 @@ async def process_successful_payment(message: Message, state: FSMContext):
 async def finalize_order(user_id: int, message: Message, state: FSMContext):
     cart = user_carts.get(user_id, {})
     if not cart:
-        await message.answer("Кошик порожній. Скасовано.", reply_markup=make_main_menu())
+        await message.answer("🛒 Кошик порожній. Замовлення скасовано.", reply_markup=make_main_menu())
         await state.clear()
         return
 
@@ -157,14 +195,16 @@ async def finalize_order(user_id: int, message: Message, state: FSMContext):
 
     if payment_status == "paid":
         await message.answer(
-            f"Вітаю, замовлення №{order_id} оформлено та оплачено! Дякуємо!\n"
-            f"Оператор з вами зв'яжеться для уточнення деталей.",
+            f"🎉 Вітаємо! Ваше замовлення №{order_id} успішно оформлено та оплачено!\n"
+            f"Дякуємо за довіру! ❤️\n\n"
+            f"Наш оператор незабаром зв'яжеться з Вами для уточнення деталей.",
             reply_markup=make_main_menu()
         )
     else:
         await message.answer(
-            f"Вітаю, замовлення №{order_id} оформлено! Дякуємо!\n"
-            f"Оплата буде проведена при отриманні. Оператор з вами зв'яжеться для уточнення деталей.",
+            f"🎉 Вітаємо! Ваше замовлення №{order_id} успішно оформлено!\n"
+            f"Дякуємо за довіру! ❤️\n\n"
+            f"Оплата буде проведена при отриманні. Наш оператор незабаром зв'яжеться з Вами для уточнення деталей.",
             reply_markup=make_main_menu()
         )
 
@@ -172,11 +212,11 @@ async def finalize_order(user_id: int, message: Message, state: FSMContext):
 async def confirm_order(callback: CallbackQuery, state: FSMContext):
     cart = user_carts.get(callback.from_user.id, {})
     if not cart:
-        await callback.answer("Кошик порожній.")
+        await callback.answer("🛒 Кошик порожній.")
 
         from keyboards.inline import make_main_menu
         await callback.message.answer(
-            "Ваш кошик порожній. Спочатку додайте товари до кошика.",
+            "🛒 Ваш кошик порожній. Спочатку додайте товари до кошика.",
             reply_markup=make_main_menu()
         )
         return
@@ -186,42 +226,78 @@ async def confirm_order(callback: CallbackQuery, state: FSMContext):
     except:
         pass
 
-    await callback.message.answer("Вкажіть ваше ПІБ (повне ім'я):")
+    await callback.message.answer("👤 Вкажіть ваше повне ім'я (ПІБ):\n\n<i>Приклад: Шевченко Тарас Григорович</i>",
+                                  parse_mode="HTML")
     await state.set_state(OrderStates.full_name)
     await callback.answer()
 
 
 @cart_router.message(OrderStates.full_name)
 async def process_full_name(message: Message, state: FSMContext):
-    await state.update_data(full_name=message.text.strip())
+    full_name = message.text.strip()
 
-    await message.answer("Вкажіть свій номер телефону:")
+    name_parts = full_name.split()
+    if len(name_parts) < 3:
+        await message.answer("❌ Необхідно вказати прізвище, ім'я та по батькові.\n\n<i>Приклад: Шевченко Тарас Григорович</i>",
+                           parse_mode="HTML")
+        return
+
+    await state.update_data(full_name=full_name)
+
+    await message.answer("📱 Вкажіть ваш номер телефону:\n\n<i>Приклад: +380501234567 або 0501234567</i>",
+                       parse_mode="HTML")
     await state.set_state(OrderStates.phone)
 
 
 @cart_router.message(OrderStates.phone)
 async def process_phone(message: Message, state: FSMContext):
-    await state.update_data(phone=message.text.strip())
+    phone = message.text.strip()
 
-    await message.answer("Якщо маєте коментар, напишіть тут (або «Немає»):")
+    digits = ''.join(re.findall(r'\d', phone))
+
+    if not (
+            (digits.startswith('380') and len(digits) == 12) or
+            (digits.startswith('0') and len(digits) == 10)
+    ):
+        await message.answer(
+            "❌ Некоректний формат телефону. Номер має починатися з +380 або 0 та містити 10-12 цифр.\n\n"
+            "<i>Приклад: +380501234567 або 0501234567</i>",
+            parse_mode="HTML"
+        )
+        return
+
+    if digits.startswith('0'):
+        normalized_phone = "+38" + digits
+    elif digits.startswith('380'):
+        normalized_phone = "+" + digits
+    else:
+        normalized_phone = phone
+
+    await state.update_data(phone=normalized_phone)
+
+    await message.answer("💬 Якщо маєте коментар до замовлення, напишіть тут (або введіть «-» чи «Немає»):")
     await state.set_state(OrderStates.comment)
 
 
 @cart_router.message(OrderStates.comment)
 async def process_comment(message: Message, state: FSMContext):
-    await state.update_data(comment=message.text.strip())
+    comment = message.text.strip()
 
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    if comment.lower() in ['-', 'немає', 'нет', 'no', 'none']:
+        comment = "-"
+
+    await state.update_data(comment=comment)
+
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="Нова Пошта", callback_data="delivery:nova"),
-            InlineKeyboardButton(text="УкрПошта", callback_data="delivery:ukr")
+            InlineKeyboardButton(text="📦 Нова Пошта", callback_data="delivery:nova"),
+            InlineKeyboardButton(text="📮 УкрПошта", callback_data="delivery:ukr")
         ],
         [
-            InlineKeyboardButton(text="Кур'єр", callback_data="delivery:cur"),
-            InlineKeyboardButton(text="Самовивіз", callback_data="delivery:samov")
+            InlineKeyboardButton(text="🚚 Кур'єрська доставка", callback_data="delivery:cur"),
+            InlineKeyboardButton(text="🏪 Самовивіз", callback_data="delivery:samov")
         ]
     ])
 
-    await message.answer("Оберіть спосіб доставки:", reply_markup=kb)
+    await message.answer("🚚 Оберіть спосіб доставки:", reply_markup=kb)
     await state.set_state(OrderStates.delivery_method)
