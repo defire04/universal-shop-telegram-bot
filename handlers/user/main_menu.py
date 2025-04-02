@@ -12,7 +12,6 @@ from ..cart.order_process import confirm_order
 
 @user_router.message(F.text == "Головне меню")
 async def show_main_menu(message: Message):
-    """Handle the 'Головне меню' button press"""
     await message.answer(
         f"Обери, що хочеш зробити: {random.choice(EMOJI_SET['catalog'])}",
         reply_markup=make_main_menu()
@@ -21,7 +20,6 @@ async def show_main_menu(message: Message):
 
 @user_router.callback_query(F.data.in_(["menu_cart", "menu_order", "go_main"]))
 async def callback_main_menu(callback: CallbackQuery, state: FSMContext):
-    """Handle main menu callback queries"""
     try:
         await callback.message.delete()
     except Exception:

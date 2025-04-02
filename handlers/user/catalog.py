@@ -10,7 +10,6 @@ from services.product_service import get_all_brands, list_products_by_brand
 
 @user_router.message(F.text == "Каталог")
 async def show_catalog(message: Message):
-    """Handle the 'Каталог' button press"""
     brands = get_all_brands()
     if not brands:
         await message.answer(
@@ -29,7 +28,6 @@ async def show_catalog(message: Message):
 
 @user_router.callback_query(F.data == "menu_catalog")
 async def on_menu_catalog(callback: CallbackQuery):
-    """Handle the menu_catalog callback"""
     try:
         await callback.message.delete()
     except Exception:
@@ -55,7 +53,6 @@ async def on_menu_catalog(callback: CallbackQuery):
 
 @user_router.callback_query(F.data.startswith("brand:"))
 async def on_choose_brand(callback: CallbackQuery):
-    """Handle brand selection callback"""
     brand = callback.data.split(":", 1)[1]
     products = list_products_by_brand(brand)
 
@@ -83,7 +80,6 @@ async def on_choose_brand(callback: CallbackQuery):
 
 @user_router.callback_query(F.data.startswith("back_to_brand:"))
 async def on_back_to_brand(callback: CallbackQuery):
-    """Handle back to brand callback"""
     try:
         await callback.message.delete()
     except Exception:

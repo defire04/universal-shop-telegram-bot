@@ -9,7 +9,6 @@ from services.order_service import get_user_orders, get_items_for_order
 
 @user_router.message(F.text == "Мої замовлення")
 async def show_user_orders(message: Message):
-    """Handle the 'Мої замовлення' button press"""
     orders = get_user_orders(message.from_user.id)
 
     orders_emoji = random.choice(EMOJI_SET["orders"])

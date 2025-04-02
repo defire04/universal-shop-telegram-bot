@@ -27,8 +27,8 @@ async def main():
     dp.include_router(cart_router)
     dp.include_router(admin_router)
     dp.include_router(user_router)
-    dp.include_router(fallback_router)
     dp.include_router(contact_router)
+    dp.include_router(fallback_router)
 
 
 

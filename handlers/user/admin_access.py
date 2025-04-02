@@ -9,7 +9,6 @@ from ..admin.menu import show_admin_menu
 
 @user_router.message(F.text == "Адмін-меню")
 async def access_admin_menu(message: Message):
-    """Handle the 'Адмін-меню' button press with access control"""
     admin_emoji = random.choice(EMOJI_SET["admin"])
 
     if message.from_user.id in ADMIN_IDS:
