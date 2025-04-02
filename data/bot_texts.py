@@ -42,7 +42,7 @@ FEEDBACK_TITLE = "💬 Залишити відгук"
 CONTACT_TITLE = "📞 Зв'язатися з нами"
 FEEDBACK_THANKS = "🙏 Дякуємо за ваш відгук! Ми цінуємо кожну думку і працюємо над покращенням сервісу."
 
-ORDERS_PER_PAGE = 3
+DATA_PER_PAGE = 3
 NAVIGATION_EMOJI = ["⬅️", "➡️", "🔄", "📋"]
 
 EMOJI_SET = {

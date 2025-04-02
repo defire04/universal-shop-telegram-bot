@@ -4,11 +4,11 @@ from aiogram import F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data.bot_texts import ORDERS_PER_PAGE, EMOJI_SET
+from data.bot_texts import DATA_PER_PAGE, EMOJI_SET
 from data.config import ADMIN_IDS
 from handlers.admin.menu import show_admin_menu
 from handlers.admin.router import admin_router
-from services.order_service import get_stats, get_all_orders, get_items_for_order
+from services.order_service import get_stats, get_all_orders, get_items_for_order, get_orders_page, get_orders_count
 
 
 @admin_router.callback_query(F.data == "admin_stats")
@@ -87,13 +87,12 @@ async def callback_exit(callback: CallbackQuery):
 
 async def show_orders_page(message: Message, page: int):
     orders_emoji = random.choice(EMOJI_SET["orders"])
-    orders = get_all_orders()
-    total = len(orders)
-    page_size = ORDERS_PER_PAGE
+
+    page_size = DATA_PER_PAGE
+    page_orders = get_orders_page(page, page_size)
+    total = get_orders_count()
+
     total_pages = (total + page_size - 1) // page_size
-    start = page * page_size
-    end = start + page_size
-    page_orders = orders[start:end]
 
     kb = InlineKeyboardBuilder()
     text = f"📦 *Всі замовлення* {orders_emoji}\n"
@@ -113,6 +112,7 @@ async def show_orders_page(message: Message, page: int):
                 f"📍 _{o['address']}_\n\n"
                 f"💰 *Сума:* {o['total_price']} грн\n"
                 f"💳 *Оплата:* {o['payment_method']} ({status_emoji} {o['payment_status']})\n"
+                f"💳 *Коментар:* {o['comment']}\n"
                 f"📅 _{o['created_at']}_\n"
             )
 
@@ -128,13 +128,13 @@ async def show_orders_page(message: Message, page: int):
     nav_buttons = []
     if page > 0:
         nav_buttons.append(InlineKeyboardButton(
-            text="⬅️ Далі",
+            text="⬅️ Назад",
             callback_data=f"admin_list_orders_page:{page - 1}"
         ))
 
-    if end < total:
+    if (page + 1) * page_size < total:
         nav_buttons.append(InlineKeyboardButton(
-            text="➡️ Назад",
+            text="➡️ Вперед",
             callback_data=f"admin_list_orders_page:{page + 1}"
         ))
 

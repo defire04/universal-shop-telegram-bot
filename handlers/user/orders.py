@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from data.bot_texts import EMOJI_SET, NAVIGATION_EMOJI, ORDERS_PER_PAGE
+from data.bot_texts import EMOJI_SET, NAVIGATION_EMOJI, DATA_PER_PAGE
 from keyboards.reply import main_reply_keyboard
 from services.order_service import get_user_orders, get_items_for_order
 from .router import user_router
@@ -50,9 +50,9 @@ async def show_orders(message: Message, user_id: int, page: int = 0):
         )
         return
 
-    total_pages = (len(orders) + ORDERS_PER_PAGE - 1) // ORDERS_PER_PAGE
-    start_idx = page * ORDERS_PER_PAGE
-    end_idx = min(start_idx + ORDERS_PER_PAGE, len(orders))
+    total_pages = (len(orders) + DATA_PER_PAGE - 1) // DATA_PER_PAGE
+    start_idx = page * DATA_PER_PAGE
+    end_idx = min(start_idx + DATA_PER_PAGE, len(orders))
     current_orders = orders[start_idx:end_idx]
 
     kb = InlineKeyboardBuilder()
