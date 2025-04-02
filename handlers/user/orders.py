@@ -85,7 +85,7 @@ async def show_orders(message: Message, user_id: int, page: int = 0):
     for i, order in enumerate(current_orders):
         order_emoji = header_emojis[i]
         delivery_method = order['delivery_method'] if order['delivery_method'] else 'Не вказано'
-        payment_status = "✅ Оплачено" if order['payment_status'] == "paid" else "⏳ Очікує оплати"
+        payment_status = "✅ Сплачено" if order['payment_status'] == "paid" else "⏳ Очікує оплати"
 
         txt += f"*№{order['id']}* {order_emoji}\n"
         txt += f"📅 Дата: _{order['created_at']}_\n"
