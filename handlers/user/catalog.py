@@ -1,5 +1,6 @@
 import random
 from aiogram import F
+from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 
 from .router import user_router, EMOJI_SET
@@ -8,8 +9,17 @@ from keyboards.reply import main_reply_keyboard
 from services.product_service import get_all_brands, list_products_by_brand
 
 
+@user_router.message(Command("catalog"))
+async def cmd_catalog(message: Message):
+    await show_catalog_logic(message)
+
+
 @user_router.message(F.text == "Каталог")
 async def show_catalog(message: Message):
+    await show_catalog_logic(message)
+
+
+async def show_catalog_logic(message: Message):
     brands = get_all_brands()
     if not brands:
         await message.answer(
@@ -24,7 +34,6 @@ async def show_catalog(message: Message):
         f"Ось наші бренди {catalog_emoji}. Обирай, будь ласка:",
         reply_markup=make_brand_menu(brands)
     )
-
 
 @user_router.callback_query(F.data == "menu_catalog")
 async def on_menu_catalog(callback: CallbackQuery):

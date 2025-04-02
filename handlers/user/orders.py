@@ -1,14 +1,25 @@
 import random
+
 from aiogram import F
+from aiogram.filters import Command
 from aiogram.types import Message
 
-from .router import user_router, EMOJI_SET
 from keyboards.reply import main_reply_keyboard
 from services.order_service import get_user_orders, get_items_for_order
+from .router import user_router, EMOJI_SET
+
+
+@user_router.message(Command("orders"))
+async def cmd_orders(message: Message):
+    await show_orders_logic(message)
 
 
 @user_router.message(F.text == "Мої замовлення")
 async def show_user_orders(message: Message):
+    await show_orders_logic(message)
+
+
+async def show_orders_logic(message: Message):
     orders = get_user_orders(message.from_user.id)
 
     orders_emoji = random.choice(EMOJI_SET["orders"])
