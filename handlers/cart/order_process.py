@@ -238,15 +238,38 @@ async def process_full_name(message: Message, state: FSMContext):
     full_name = message.text.strip()
 
     name_parts = full_name.split()
+
+
     if len(name_parts) < 3:
-        await message.answer("❌ Необхідно вказати прізвище, ім'я та по батькові.\n\n<i>Приклад: Шевченко Тарас Григорович</i>",
-                           parse_mode="HTML")
+        await message.answer(
+            "❌ Необхідно вказати прізвище, ім'я та по батькові.\n\n<i>Приклад: Шевченко Тарас Григорович</i>",
+            parse_mode="HTML")
         return
+
+
+    for part in name_parts[:3]:
+        if not part[0].isupper():
+            await message.answer(
+                "❌ Прізвище, ім'я та по батькові повинні починатися з великої літери.\n\n<i>Приклад: Шевченко Тарас Григорович</i>",
+                parse_mode="HTML")
+            return
+
+        if len(part) < 2:
+            await message.answer(
+                "❌ Кожна частина ПІБ повинна містити мінімум 2 літери.\n\n<i>Приклад: Шевченко Тарас Григорович</i>",
+                parse_mode="HTML")
+            return
+
+        if not all(char.isalpha() or char == '-' for char in part):
+            await message.answer(
+                "❌ ПІБ може містити тільки літери та дефіс.\n\n<i>Приклад: Шевченко Тарас Григорович</i>",
+                parse_mode="HTML")
+            return
 
     await state.update_data(full_name=full_name)
 
     await message.answer("📱 Вкажіть ваш номер телефону:\n\n<i>Приклад: +380501234567 або 0501234567</i>",
-                       parse_mode="HTML")
+                         parse_mode="HTML")
     await state.set_state(OrderStates.phone)
 
 

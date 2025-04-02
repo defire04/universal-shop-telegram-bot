@@ -6,7 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from data.bot_texts import DATA_PER_PAGE, EMOJI_SET
 from data.config import ADMIN_IDS
-from handlers.admin.menu import show_admin_menu
+from handlers.admin.menu import show_admin_menu, get_pagination_keyboard
 from handlers.admin.router import admin_router
 from services.order_service import get_stats, get_all_orders, get_items_for_order, get_orders_page, get_orders_count
 
@@ -94,7 +94,6 @@ async def show_orders_page(message: Message, page: int):
 
     total_pages = (total + page_size - 1) // page_size
 
-    kb = InlineKeyboardBuilder()
     text = f"📦 *Всі замовлення* {orders_emoji}\n"
     text += f"_Сторінка {page + 1} з {total_pages}_\n\n"
 
@@ -123,35 +122,14 @@ async def show_orders_page(message: Message, page: int):
                     subtotal = it["product_price"] * it["quantity"]
                     text += f"  • {it['product_name']} x {it['quantity']} = {subtotal} грн\n"
 
-            text += "\n" + "─" * 25 + "\n\n"
+            text += "\n" + "─" * 20 + "\n\n"
 
-    nav_buttons = []
-    if page > 0:
-        nav_buttons.append(InlineKeyboardButton(
-            text="⬅️ Назад",
-            callback_data=f"admin_list_orders_page:{page - 1}"
-        ))
-
-    if (page + 1) * page_size < total:
-        nav_buttons.append(InlineKeyboardButton(
-            text="➡️ Вперед",
-            callback_data=f"admin_list_orders_page:{page + 1}"
-        ))
-
-    if nav_buttons:
-        kb.row(*nav_buttons)
-
-    kb.row(
-        InlineKeyboardButton(
-            text="🔄 Оновити",
-            callback_data=f"admin_list_orders_page:{page}"
-        )
+    kb = get_pagination_keyboard(
+        page=page,
+        total_count=total,
+        page_size=page_size,
+        base_callback="admin_list_orders_page"
     )
-
-    kb.row(InlineKeyboardButton(
-        text="🔙 В адмін-меню",
-        callback_data="admin_back"
-    ))
 
     await message.answer(
         text,

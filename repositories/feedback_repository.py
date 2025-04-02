@@ -59,7 +59,7 @@ def get_feedback_page(page: int, page_size: int):
     return rows
 
 
-# Step 1: Update feedback_repository.py to add pagination
+
 
 from data.db import get_connection
 
