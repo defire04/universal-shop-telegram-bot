@@ -16,7 +16,7 @@ async def cmd_contact(message: Message):
 async def cmd_feedback(message: Message, state: FSMContext):
     await start_feedback(message, state)
 
-@contact_router.message(F.text == "Зв'язатися з нами")
+@contact_router.message(F.text == "📞 Зв'язатися з нами")
 async def text_contact(message: Message):
     await show_contact_menu(message)
 

@@ -14,7 +14,7 @@ async def cmd_orders(message: Message):
     await show_orders_logic(message)
 
 
-@user_router.message(F.text == "Мої замовлення")
+@user_router.message(F.text == "📋 Мої замовлення")
 async def show_user_orders(message: Message):
     await show_orders_logic(message)
 

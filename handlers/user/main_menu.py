@@ -10,7 +10,7 @@ from ..cart.cart_management import show_cart
 from ..cart.order_process import confirm_order
 
 
-@user_router.message(F.text == "Головне меню")
+@user_router.message(F.text == "🏠 Головне меню")
 async def show_main_menu(message: Message):
     await message.answer(
         f"Обери, що хочеш зробити: {random.choice(EMOJI_SET['catalog'])}",
