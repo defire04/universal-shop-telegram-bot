@@ -3,7 +3,8 @@ from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
-from .router import user_router, EMOJI_SET
+from .router import user_router
+from data.bot_texts import EMOJI_SET
 from keyboards.inline import make_main_menu
 from keyboards.reply import main_reply_keyboard
 from ..cart.cart_management import show_cart

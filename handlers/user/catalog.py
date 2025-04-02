@@ -3,7 +3,8 @@ from aiogram import F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 
-from .router import user_router, EMOJI_SET
+from .router import user_router
+from data.bot_texts import EMOJI_SET
 from keyboards.inline import make_brand_menu, make_products_list
 from keyboards.reply import main_reply_keyboard
 from services.product_service import get_all_brands, list_products_by_brand

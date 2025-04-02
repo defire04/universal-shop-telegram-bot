@@ -1,3 +1,5 @@
+from typing import Dict
+
 from aiogram.fsm.state import State, StatesGroup
 
 
@@ -8,3 +10,8 @@ class OrderStates(StatesGroup):
     delivery_method = State()
     address = State()
     payment_method = State()
+
+
+user_carts: Dict[int, Dict[int, int]] = {}
+temp_quantities: Dict[tuple, int] = {}
+user_flow: Dict[int, Dict[str, str]] = {}

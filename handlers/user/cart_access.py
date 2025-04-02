@@ -4,7 +4,8 @@ from aiogram import F
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from .router import user_router, EMOJI_SET
+from .router import user_router
+from data.bot_texts import EMOJI_SET
 from ..cart.cart_management import show_cart
 
 

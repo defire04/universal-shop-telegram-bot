@@ -3,10 +3,10 @@ import random
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from data.bot_texts import GREETING_MESSAGE
+from data.bot_texts import GREETING_MESSAGE, EMOJI_SET
 from keyboards.reply import main_reply_keyboard
 from services.user_service import ensure_user_exists
-from .router import user_router, GREETINGS, EMOJI_SET
+from .router import user_router
 
 
 @user_router.message(Command("start"))

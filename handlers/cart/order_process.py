@@ -5,8 +5,8 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
     PreCheckoutQuery
 
 from data.config import PAYMENT_TOKEN
-from handlers.cart.router import cart_router, user_carts
-from handlers.cart.states import OrderStates
+from handlers.cart.router import cart_router
+from handlers.cart.states import OrderStates, user_carts
 from keyboards.inline import make_main_menu
 from services.order_service import create_new_order_ext
 from services.product_service import get_product

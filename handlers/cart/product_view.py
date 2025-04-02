@@ -2,7 +2,8 @@ from aiogram import F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
 from handlers.cart.cart_management import show_cart
-from handlers.cart.router import cart_router, temp_quantities, user_carts
+from handlers.cart.router import cart_router
+from handlers.cart.states import user_carts, temp_quantities
 from services.product_service import get_product, get_next_prev_products
 
 

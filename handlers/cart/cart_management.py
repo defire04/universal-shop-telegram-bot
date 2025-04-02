@@ -1,7 +1,9 @@
 from aiogram import F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
-from handlers.cart.router import cart_router, user_carts
+from handlers.cart.states import user_carts
+from handlers.cart.router import cart_router
+
 from keyboards.inline import make_main_menu
 from services.product_service import get_product
 

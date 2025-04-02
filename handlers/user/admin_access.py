@@ -2,7 +2,8 @@ import random
 from aiogram import F
 from aiogram.types import Message
 
-from .router import user_router, EMOJI_SET
+from .router import user_router
+from data.bot_texts import EMOJI_SET
 from data.config import ADMIN_IDS
 from ..admin.menu import show_admin_menu
 

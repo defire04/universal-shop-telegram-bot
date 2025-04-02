@@ -1,6 +1,7 @@
 from aiogram import F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
+from data.bot_texts import ORDERS_PER_PAGE
 from data.config import ADMIN_IDS
 from handlers.admin.menu import show_admin_menu
 from handlers.admin.router import admin_router
@@ -82,7 +83,7 @@ async def callback_exit(callback: CallbackQuery):
 
 
 async def show_orders_page(message: Message, page: int):
-    page_size = 5
+    page_size = ORDERS_PER_PAGE
     orders = get_all_orders()
     total = len(orders)
     start = page * page_size
