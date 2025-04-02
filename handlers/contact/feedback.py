@@ -58,7 +58,6 @@ async def start_feedback(message: Message, state: FSMContext):
         reply_markup=kb
     )
 
-    # Сохраняем ID сообщения в состоянии
     await state.update_data(feedback_msg_id=feedback_msg.message_id)
     await state.set_state(FeedbackStates.waiting_for_message)
 

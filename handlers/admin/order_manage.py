@@ -1,7 +1,10 @@
-from aiogram import F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+import random
 
-from data.bot_texts import ORDERS_PER_PAGE
+from aiogram import F
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from data.bot_texts import ORDERS_PER_PAGE, EMOJI_SET
 from data.config import ADMIN_IDS
 from handlers.admin.menu import show_admin_menu
 from handlers.admin.router import admin_router
@@ -83,53 +86,75 @@ async def callback_exit(callback: CallbackQuery):
 
 
 async def show_orders_page(message: Message, page: int):
-    page_size = ORDERS_PER_PAGE
+    orders_emoji = random.choice(EMOJI_SET["orders"])
     orders = get_all_orders()
     total = len(orders)
+    page_size = ORDERS_PER_PAGE
+    total_pages = (total + page_size - 1) // page_size
     start = page * page_size
     end = start + page_size
     page_orders = orders[start:end]
 
+    kb = InlineKeyboardBuilder()
+    text = f"📦 *Всі замовлення* {orders_emoji}\n"
+    text += f"_Сторінка {page + 1} з {total_pages}_\n\n"
+
     if not page_orders:
-        text = "📭 Немає замовлень на цій сторінці."
+        text += "📭 На цій сторінці немає замовлень."
     else:
-        text = f"📄 Сторінка {page + 1} із {((total - 1) // page_size) + 1}\n\n"
         for o in page_orders:
+            status_emoji = "✅" if o['payment_status'] == "paid" else "⚠️"
+            delivery_emoji = random.choice(["🚚", "🚛", "📦"])
+
             text += (
-                f"📦 Замовлення №{o['id']}\n"
-                f"👤 Ім'я: {o['full_name']}\n"
-                f"💰 Сума: {o['total_price']}\n"
-                f"🚚 Доставка: {o['delivery_method']}\n"
-                f"📍 Адреса: {o['address']}\n"
-                f"📞 Телефон: {o['phone']}\n"
-                f"💬 Коментар: {o['comment']}\n"
-                f"💳 Спосіб оплати: {o['payment_method']}\n"
-                f"🧾 Статус оплати: {o['payment_status']}\n"
-                f"📅 Дата: {o['created_at']}\n"
+                f"*№{o['id']}* {delivery_emoji}\n"
+                f"👤 *Клієнт:* {o['full_name']}\n"
+                f"📞 `{o['phone']}`\n"
+                f"📍 _{o['address']}_\n\n"
+                f"💰 *Сума:* {o['total_price']} грн\n"
+                f"💳 *Оплата:* {o['payment_method']} ({status_emoji} {o['payment_status']})\n"
+                f"📅 _{o['created_at']}_\n"
             )
 
             items = get_items_for_order(o["id"])
             if items:
-                text += "🛍️ Товари:\n"
+                text += "🛍️ *Товари:*\n"
                 for it in items:
                     subtotal = it["product_price"] * it["quantity"]
-                    text += f"  {it['product_name']} x {it['quantity']} = {subtotal}\n"
-            text += "--------------------------------\n"
+                    text += f"  • {it['product_name']} x {it['quantity']} = {subtotal} грн\n"
 
-    buttons = []
+            text += "\n" + "─" * 25 + "\n\n"
+
+    nav_buttons = []
     if page > 0:
-        buttons.append([
-            InlineKeyboardButton(text="⬅️ Попередня", callback_data=f"admin_list_orders_page:{page - 1}")
-        ])
+        nav_buttons.append(InlineKeyboardButton(
+            text="⬅️ Далі",
+            callback_data=f"admin_list_orders_page:{page - 1}"
+        ))
 
     if end < total:
-        buttons.append([
-            InlineKeyboardButton(text="➡️ Наступна", callback_data=f"admin_list_orders_page:{page + 1}")
-        ])
+        nav_buttons.append(InlineKeyboardButton(
+            text="➡️ Назад",
+            callback_data=f"admin_list_orders_page:{page + 1}"
+        ))
 
-    buttons.append([
-        InlineKeyboardButton(text="🔙 Назад", callback_data="admin_back")
-    ])
+    if nav_buttons:
+        kb.row(*nav_buttons)
 
-    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await message.answer(text, reply_markup=kb)
+    kb.row(
+        InlineKeyboardButton(
+            text="🔄 Оновити",
+            callback_data=f"admin_list_orders_page:{page}"
+        )
+    )
+
+    kb.row(InlineKeyboardButton(
+        text="🔙 В адмін-меню",
+        callback_data="admin_back"
+    ))
+
+    await message.answer(
+        text,
+        parse_mode="Markdown",
+        reply_markup=kb.as_markup()
+    )

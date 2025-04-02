@@ -6,7 +6,7 @@ async def show_admin_menu(message: Message):
         [InlineKeyboardButton(text="📋 Список товарів", callback_data="admin_list_products")],
         [InlineKeyboardButton(text="🗑️ Видалити товар", callback_data="admin_del_product")],
         [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
-        [InlineKeyboardButton(text="📦 Замовлення (5 на сторінку)", callback_data="admin_list_orders_page:0")],
+        [InlineKeyboardButton(text="📦 Замовлення", callback_data="admin_list_orders_page:0")],
         [InlineKeyboardButton(text="🚪 Вийти", callback_data="admin_exit")]
     ]
 

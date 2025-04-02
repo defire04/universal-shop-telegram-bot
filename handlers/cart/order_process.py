@@ -57,14 +57,12 @@ async def handle_address(message: Message, state: FSMContext):
                 parse_mode="HTML")
             return
     elif delivery_method == "nova":
-        # Для Нової Пошти достатньо номера відділення
         if not re.search(r'\d+', address):
             await message.answer(
                 "❌ Необхідно вказати числовий номер відділення Нової Пошти.\n\n<i>Приклад: 33, 45, 100</i>",
                 parse_mode="HTML")
             return
     elif delivery_method == "ukr":
-        # Для УкрПошти або номер відділення, або індекс
         if not re.search(r'\d+', address):
             await message.answer(
                 "❌ Необхідно вказати числовий номер відділення або індекс УкрПошти.\n\n<i>Приклад: 01001, 79000</i>",
@@ -193,13 +191,11 @@ async def finalize_order(user_id: int, message: Message, state: FSMContext):
     user_carts[user_id] = {}
     await state.clear()
 
-    # Создаем клавиатуру с дополнительной кнопкой отзыва
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🏠 Головне меню", callback_data="go_main")],
         [InlineKeyboardButton(text="💬 Залишити відгук", callback_data="leave_feedback")]
     ])
 
-    # Импортируем сообщения из файла настроек
     from data.bot_texts import ORDER_SUCCESS, ORDER_PAID_SUCCESS
 
     if payment_status == "paid":
