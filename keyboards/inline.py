@@ -8,7 +8,8 @@ def make_main_menu() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [InlineKeyboardButton(text="Каталог", callback_data="menu_catalog")],
             [InlineKeyboardButton(text="Кошик", callback_data="menu_cart")],
-            [InlineKeyboardButton(text="Оформити замовлення", callback_data="menu_order")]
+            [InlineKeyboardButton(text="Оформити замовлення", callback_data="menu_order")],
+            [InlineKeyboardButton(text="Зв'язатися з нами", callback_data="contact_menu")]
         ]
     )
     return keyboard

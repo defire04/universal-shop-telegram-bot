@@ -193,19 +193,24 @@ async def finalize_order(user_id: int, message: Message, state: FSMContext):
     user_carts[user_id] = {}
     await state.clear()
 
+    # Создаем клавиатуру с дополнительной кнопкой отзыва
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🏠 Головне меню", callback_data="go_main")],
+        [InlineKeyboardButton(text="💬 Залишити відгук", callback_data="leave_feedback")]
+    ])
+
+    # Импортируем сообщения из файла настроек
+    from data.bot_texts import ORDER_SUCCESS, ORDER_PAID_SUCCESS
+
     if payment_status == "paid":
         await message.answer(
-            f"🎉 Вітаємо! Ваше замовлення №{order_id} успішно оформлено та оплачено!\n"
-            f"Дякуємо за довіру! ❤️\n\n"
-            f"Наш оператор незабаром зв'яжеться з Вами для уточнення деталей.",
-            reply_markup=make_main_menu()
+            ORDER_PAID_SUCCESS.format(order_id=order_id),
+            reply_markup=kb
         )
     else:
         await message.answer(
-            f"🎉 Вітаємо! Ваше замовлення №{order_id} успішно оформлено!\n"
-            f"Дякуємо за довіру! ❤️\n\n"
-            f"Оплата буде проведена при отриманні. Наш оператор незабаром зв'яжеться з Вами для уточнення деталей.",
-            reply_markup=make_main_menu()
+            ORDER_SUCCESS.format(order_id=order_id),
+            reply_markup=kb
         )
 
 

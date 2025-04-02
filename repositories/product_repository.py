@@ -49,3 +49,23 @@ def delete_product(product_id):
     cur.execute("DELETE FROM products WHERE id=?", (product_id,))
     conn.commit()
     conn.close()
+
+
+def get_next_prev_product_ids(product_id, brand):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM products WHERE brand = ? ORDER BY name ASC", (brand,))
+    product_ids = [row["id"] for row in cur.fetchall()]
+
+    if product_id not in product_ids:
+        conn.close()
+        return None, None
+
+    current_index = product_ids.index(product_id)
+
+    next_id = product_ids[(current_index + 1) % len(product_ids)]
+    prev_id = product_ids[(current_index - 1) % len(product_ids)]
+
+    conn.close()
+    return prev_id, next_id

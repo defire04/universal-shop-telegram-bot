@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 
 from handlers.cart.cart_management import show_cart
 from handlers.cart.router import cart_router, temp_quantities, user_carts
-from services.product_service import get_product
+from services.product_service import get_product, get_next_prev_products
 
 
 @cart_router.callback_query(F.data.startswith("viewprod:"))
@@ -85,8 +85,6 @@ async def callback_change_quantity(callback: CallbackQuery):
 
 @cart_router.callback_query(F.data == "cart_view")
 async def show_cart_callback(callback: CallbackQuery):
-
-
     try:
         await callback.message.delete()
     except:
@@ -95,26 +93,59 @@ async def show_cart_callback(callback: CallbackQuery):
     await show_cart(callback.message, callback.from_user.id)
     await callback.answer()
 
+
+@cart_router.callback_query(F.data.startswith("nav_product:"))
+async def navigate_products(callback: CallbackQuery):
+    pid = int(callback.data.split(":")[1])
+    product = get_product(pid)
+
+    if not product:
+        await callback.answer("❌ Товар не знайдено.")
+        return
+
+    key = (callback.from_user.id, pid)
+    if key not in temp_quantities:
+        temp_quantities[key] = 1
+
+    try:
+        await callback.message.delete()
+    except:
+        pass
+
+    await send_product_view(callback.message, product, temp_quantities[key])
+    await callback.answer()
+
+
 async def send_product_view(message: Message, product: dict, qty: int):
     brand = product['brand']
     price = product['price']
     total_price = price * qty
 
+    prev_id, next_id = get_next_prev_products(product['id'], brand)
+
     caption = f"<b>🛍️ {product['name']}</b>\n"
     caption += f"<i>Бренд: {brand}</i>\n\n"
-    caption += f"💰 Ціна: {price} грн\n"
-    caption += f"🔢 Кількість: {qty}\n"
-    caption += f"💵 Загалом: {total_price} грн"
 
-    kb = InlineKeyboardMarkup(inline_keyboard=[
+    caption += f"💰 Ціна: <b>{price} грн</b>\n"
+    caption += f"🔢 Кількість: <b>{qty}</b>\n"
+    caption += f"💵 Загалом: <b>{total_price} грн</b>"
+
+    keyboard = [
+        [
+            InlineKeyboardButton(text="⬅️", callback_data=f"nav_product:{prev_id}"),
+            InlineKeyboardButton(text=f"{brand}", callback_data=f"back_to_brand:{brand}"),
+            InlineKeyboardButton(text="➡️", callback_data=f"nav_product:{next_id}")
+        ],
         [
             InlineKeyboardButton(text="➖", callback_data=f"qty:dec:{product['id']}"),
             InlineKeyboardButton(text=f"{qty} шт", callback_data="none"),
             InlineKeyboardButton(text="➕", callback_data=f"qty:inc:{product['id']}")
         ],
         [InlineKeyboardButton(text="🛒 Додати в кошик", callback_data=f"qty:add:{product['id']}")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data=f"back_to_brand:{brand}")]
-    ])
+        [InlineKeyboardButton(text="🔙 Повернутись до каталогу", callback_data=f"back_to_brand:{brand}")]
+    ]
+
+    kb = InlineKeyboardMarkup(inline_keyboard=keyboard)
 
     if product['photo_url']:
         await message.answer_photo(product['photo_url'], caption=caption, parse_mode="HTML", reply_markup=kb)

@@ -8,6 +8,7 @@ from data.config import BOT_TOKEN
 from data.db import init_db
 from handlers.admin import admin_router
 from handlers.cart import cart_router
+from handlers.contact import contact_router
 from handlers.fallback import fallback_router
 from handlers.user import user_router
 
@@ -22,10 +23,12 @@ async def main():
     dp = Dispatcher()
 
 
-    dp.include_router(user_router)
+
     dp.include_router(cart_router)
     dp.include_router(admin_router)
+    dp.include_router(user_router)
     dp.include_router(fallback_router)
+    dp.include_router(contact_router)
 
 
 

@@ -12,6 +12,9 @@ def main_reply_keyboard(user_id: int) -> ReplyKeyboardMarkup:
         [
             KeyboardButton(text="Переглянути кошик"),
             KeyboardButton(text="Мої замовлення")
+        ],
+        [
+            KeyboardButton(text="Зв'язатися з нами")
         ]
     ]
 

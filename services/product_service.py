@@ -18,3 +18,6 @@ def get_product(product_id):
 
 def remove_product(product_id):
     product_repository.delete_product(product_id)
+
+def get_next_prev_products(product_id, brand):
+    return product_repository.get_next_prev_product_ids(product_id, brand)
