@@ -155,8 +155,8 @@ async def send_product_view(message: Message, product: dict, qty: int):
 
 
 async def send_updated_product_view(message: Message, product: dict, qty: int):
+    await send_product_view(message, product, qty)
     try:
         await message.delete()
     except:
         pass
-    await send_product_view(message, product, qty)

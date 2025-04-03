@@ -20,14 +20,14 @@ async def callback_stats(callback: CallbackQuery):
     c, t = get_stats()
     txt = f"📊 Статистика:\n📦 Замовлень: {c}\n💰 Сума: {t}"
 
+
+
+    await callback.message.answer(txt)
+    await show_admin_menu(callback.message)
     try:
         await callback.message.delete()
     except:
         pass
-
-    await callback.message.answer(txt)
-    await show_admin_menu(callback.message)
-
     await callback.answer()
 
 
@@ -43,13 +43,13 @@ async def callback_list_orders(callback: CallbackQuery):
     except:
         page = 0
 
+
+
+    await show_orders_page(callback.message, page)
     try:
         await callback.message.delete()
     except:
         pass
-
-    await show_orders_page(callback.message, page)
-
     await callback.answer()
 
 
@@ -59,13 +59,13 @@ async def callback_back(callback: CallbackQuery):
         await callback.answer("Недостатньо прав.")
         return
 
+
+
+    await show_admin_menu(callback.message)
     try:
         await callback.message.delete()
     except:
         pass
-
-    await show_admin_menu(callback.message)
-
     await callback.answer()
 
 
@@ -75,13 +75,13 @@ async def callback_exit(callback: CallbackQuery):
         await callback.answer("Недостатньо прав.")
         return
 
+
+
+    await callback.message.answer("👋 Вихід з адмін-меню.")
     try:
         await callback.message.delete()
     except:
         pass
-
-    await callback.message.answer("👋 Вихід з адмін-меню.")
-
     await callback.answer()
 
 

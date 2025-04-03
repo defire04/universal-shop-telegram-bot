@@ -24,13 +24,13 @@ async def callback_list_feedback_page(callback: CallbackQuery):
     except:
         page = 0
 
+
+
+    await show_feedback_page(callback.message, page)
     try:
         await callback.message.delete()
     except:
         pass
-
-    await show_feedback_page(callback.message, page)
-
     await callback.answer()
 
 

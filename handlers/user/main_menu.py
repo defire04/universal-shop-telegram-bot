@@ -21,11 +21,6 @@ async def show_main_menu(message: Message):
 
 @user_router.callback_query(F.data.in_(["menu_cart", "menu_order", "go_main"]))
 async def callback_main_menu(callback: CallbackQuery, state: FSMContext):
-    try:
-        await callback.message.delete()
-    except Exception:
-        pass
-
     if callback.data == "menu_cart":
         await show_cart(callback.message, callback.from_user.id)
 
@@ -39,4 +34,8 @@ async def callback_main_menu(callback: CallbackQuery, state: FSMContext):
             reply_markup=make_main_menu()
         )
 
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
     await callback.answer()

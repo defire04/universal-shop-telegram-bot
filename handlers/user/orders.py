@@ -25,12 +25,11 @@ async def show_user_orders(message: Message):
 async def process_orders_page(callback: CallbackQuery):
     page = int(callback.data.split(":", 1)[1])
 
+    await show_orders(callback.message, callback.from_user.id, page)
     try:
         await callback.message.delete()
     except Exception:
         pass
-
-    await show_orders(callback.message, callback.from_user.id, page)
     await callback.answer()
 
 

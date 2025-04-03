@@ -18,10 +18,7 @@ async def handle_delivery_method(callback: CallbackQuery, state: FSMContext):
 
     await state.update_data(delivery_method=method)
 
-    try:
-        await callback.message.delete()
-    except:
-        pass
+
 
     if method == "samov":
         await state.update_data(address="Самовивіз")
@@ -41,7 +38,10 @@ async def handle_delivery_method(callback: CallbackQuery, state: FSMContext):
             "📮 Вкажіть номер відділення УкрПошти:\n\n<i>Приклад: 01001, 79000</i>",
             parse_mode="HTML")
         await state.set_state(OrderStates.address)
-
+    try:
+        await callback.message.delete()
+    except:
+        pass
     await callback.answer()
 
 @cart_router.message(OrderStates.address)
@@ -94,16 +94,16 @@ async def handle_payment_method(callback: CallbackQuery, state: FSMContext):
     method = callback.data.split(":", 1)[1]
     await state.update_data(payment_method=method)
 
-    try:
-        await callback.message.delete()
-    except:
-        pass
+
 
     if method == "later":
         await finalize_order(callback.from_user.id, callback.message, state)
     else:
         await process_payment(callback.from_user.id, callback.message, state)
-
+    try:
+        await callback.message.delete()
+    except:
+        pass
     await callback.answer()
 
 
@@ -222,14 +222,15 @@ async def confirm_order(callback: CallbackQuery, state: FSMContext):
         )
         return
 
-    try:
-        await callback.message.delete()
-    except:
-        pass
+
 
     await callback.message.answer("👤 Вкажіть ваше повне ім'я (ПІБ):\n\n<i>Приклад: Шевченко Тарас Григорович</i>",
                                   parse_mode="HTML")
     await state.set_state(OrderStates.full_name)
+    try:
+        await callback.message.delete()
+    except:
+        pass
     await callback.answer()
 
 

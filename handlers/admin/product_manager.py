@@ -32,10 +32,7 @@ async def callback_list_products(callback: CallbackQuery):
         await callback.answer("Недостатньо прав.")
         return
 
-    try:
-        await callback.message.delete()
-    except:
-        pass
+
 
     products = list_all_products()
     txt = "📋 Список товарів:\n"
@@ -48,7 +45,10 @@ async def callback_list_products(callback: CallbackQuery):
 
     await callback.message.answer(txt)
     await show_admin_menu(callback.message)
-
+    try:
+        await callback.message.delete()
+    except:
+        pass
     await callback.answer()
 
 

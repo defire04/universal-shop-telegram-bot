@@ -38,10 +38,6 @@ async def show_catalog_logic(message: Message):
 
 @user_router.callback_query(F.data == "menu_catalog")
 async def on_menu_catalog(callback: CallbackQuery):
-    try:
-        await callback.message.delete()
-    except Exception:
-        pass
 
     brands = get_all_brands()
     if not brands:
@@ -57,7 +53,10 @@ async def on_menu_catalog(callback: CallbackQuery):
         f"Будь ласка, оберіть бренд {catalog_emoji}:",
         reply_markup=make_brand_menu(brands)
     )
-
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
     await callback.answer()
 
 
@@ -66,10 +65,6 @@ async def on_choose_brand(callback: CallbackQuery):
     brand = callback.data.split(":", 1)[1]
     products = list_products_by_brand(brand)
 
-    try:
-        await callback.message.delete()
-    except Exception:
-        pass
 
     if not products:
         await callback.message.answer(
@@ -84,16 +79,16 @@ async def on_choose_brand(callback: CallbackQuery):
         f"Товари бренду {brand} {catalog_emoji}:",
         reply_markup=make_products_list(products)
     )
-
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
     await callback.answer()
 
 
 @user_router.callback_query(F.data.startswith("back_to_brand:"))
 async def on_back_to_brand(callback: CallbackQuery):
-    try:
-        await callback.message.delete()
-    except Exception:
-        pass
+
 
     brand = callback.data.split(":", 1)[1]
     products = list_products_by_brand(brand)
@@ -110,5 +105,8 @@ async def on_back_to_brand(callback: CallbackQuery):
         f"Товари бренду {brand} {catalog_emoji}:",
         reply_markup=make_products_list(products)
     )
-
+    try:
+        await callback.message.delete()
+    except Exception:
+        pass
     await callback.answer()
