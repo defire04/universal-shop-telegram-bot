@@ -14,7 +14,8 @@ def main_reply_keyboard(user_id: int) -> ReplyKeyboardMarkup:
             KeyboardButton(text="📋 Мої замовлення")
         ],
         [
-            KeyboardButton(text="📞 Зв'язатися з нами")
+            KeyboardButton(text="📞 Зв'язатися з нами"),
+            KeyboardButton(text="🤖 AI помічник")
         ]
     ]
 

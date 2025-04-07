@@ -7,6 +7,7 @@ from aiogram.client.bot import DefaultBotProperties
 from data.config import BOT_TOKEN
 from data.db import init_db
 from handlers.admin import admin_router
+from handlers.ai import ai_router
 from handlers.cart import cart_router
 from handlers.contact import contact_router
 from handlers.fallback import fallback_router
@@ -22,8 +23,7 @@ async def main():
 
     dp = Dispatcher()
 
-
-
+    dp.include_router(ai_router)
     dp.include_router(cart_router)
     dp.include_router(admin_router)
     dp.include_router(user_router)
