@@ -25,6 +25,7 @@ def init_db():
         name TEXT NOT NULL,
         price REAL NOT NULL,
         brand TEXT NOT NULL,
+        description TEXT DEFAULT '',
         photo_url TEXT DEFAULT ''
     );
     """)

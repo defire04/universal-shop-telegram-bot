@@ -6,20 +6,22 @@ from services.product_service import list_all_products
 
 genai.configure(api_key=GEMINI_API_KEY)
 
-def get_products_info():
 
+def get_products_info():
     products = list_all_products()
     if not products:
         return "В каталозі наразі немає товарів."
 
     products_text = ""
     for product in products:
+        description = product['description'] if 'description' in product else 'Опис відсутній'
+
         product_info = (
             f"- ID: {product['id']}\n"
             f"  Назва: {product['name']}\n"
             f"  Бренд: {product['brand']}\n"
             f"  Ціна: {product['price']} грн\n"
-            f"  Опис: {product.get('description', 'Опис відсутній')}\n"
+            f"  Опис: {description}\n"
         )
         products_text += product_info + "\n"
 

@@ -111,3 +111,21 @@ def get_items_for_order(order_id):
     return rows
 
 
+def get_top_products(limit=3):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT p.id, p.name, p.price, p.brand, p.photo_url, 
+               SUM(oi.quantity) as total_ordered
+        FROM products p
+        JOIN order_items oi ON p.id = oi.product_id
+        GROUP BY p.id
+        ORDER BY total_ordered DESC
+        LIMIT ?
+    """, (limit,))
+
+    top_products = cur.fetchall()
+    conn.close()
+
+    return top_products

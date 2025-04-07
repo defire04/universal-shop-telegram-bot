@@ -1,13 +1,13 @@
 
 from data.db import get_connection
 
-def create_product(name, price, brand, photo_url):
+def create_product(name, price, brand, description, photo_url):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO products (name, price, brand, photo_url)
-        VALUES (?, ?, ?, ?)
-    """, (name, price, brand, photo_url))
+        INSERT INTO products (name, price, brand, description, photo_url)
+        VALUES (?, ?, ?, ?, ?)
+    """, (name, price, brand, description, photo_url))
     conn.commit()
     conn.close()
 

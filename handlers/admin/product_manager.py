@@ -2,10 +2,10 @@ from aiogram import F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 
+from data.config import ADMIN_IDS
+from handlers.admin.menu import show_admin_menu
 from handlers.admin.router import admin_router
 from handlers.admin.states import AdminActions
-from handlers.admin.menu import show_admin_menu
-from data.config import ADMIN_IDS
 from services.product_service import add_new_product, remove_product, list_all_products
 
 
@@ -16,7 +16,7 @@ async def callback_add_product(callback: CallbackQuery, state: FSMContext):
         return
 
     await state.set_state(AdminActions.waiting_for_product_info)
-    await callback.message.answer("Введіть: Назва|Ціна|Бренд|Фото URL")
+    await callback.message.answer("Введіть: Назва|Ціна|Бренд|Опис|Фото URL")
 
     try:
         await callback.message.delete()
@@ -31,8 +31,6 @@ async def callback_list_products(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("Недостатньо прав.")
         return
-
-
 
     products = list_all_products()
     txt = "📋 Список товарів:\n"
@@ -75,8 +73,8 @@ async def process_add_product(message: Message, state: FSMContext):
         return
 
     arr = message.text.split("|")
-    if len(arr) < 4:
-        await message.answer("❌ Невірний формат.")
+    if len(arr) < 5:
+        await message.answer("❌ Невірний формат. Потрібно: Назва|Ціна|Бренд|Опис|Фото URL")
         await show_admin_menu(message)
         await state.clear()
         return
@@ -91,9 +89,10 @@ async def process_add_product(message: Message, state: FSMContext):
         return
 
     brand = arr[2].strip()
-    photo_url = arr[3].strip()
+    description = arr[3].strip()
+    photo_url = arr[4].strip()
 
-    add_new_product(name, price, brand, photo_url)
+    add_new_product(name, price, brand, description, photo_url)
     await message.answer("✅ Товар додано.")
     await show_admin_menu(message)
     await state.clear()

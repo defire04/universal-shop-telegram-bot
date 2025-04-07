@@ -126,6 +126,9 @@ async def send_product_view(message: Message, product: dict, qty: int):
 
     caption = f"<b>🛍️ {product['name']}</b>\n"
     caption += f"<i>Бренд: {brand}</i>\n\n"
+    description = product['description']
+    if description:
+        caption += f"📝 <b>Опис:</b>\n{description}\n\n"
 
     caption += f"💰 Ціна: <b>{price} грн</b>\n"
     caption += f"🔢 Кількість: <b>{qty}</b>\n"

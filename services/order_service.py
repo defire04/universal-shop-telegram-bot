@@ -48,3 +48,5 @@ def get_items_for_order(order_id):
 
 
 
+def get_top_products(limit=3):
+    return order_repository.get_top_products(limit)
