@@ -57,32 +57,29 @@ class GeminiAIService(BaseAIService):
         if not products:
             return "В каталозі наразі немає товарів."
 
-        products_text = "УВАГА! В нашому магазині наразі доступні тільки наступні моделі квадроциклів (використовуй ТІЛЬКИ цей список!):\n\n"
+        products_text = "УВАГА! В нашому магазині наразі доступні тільки наступні моделі квадроциклів:\n\n"
 
-        product_ids = []
+        brands = {}
         for product in products:
-            if 'id' in product:
-                product_ids.append(str(product['id']))
+            brand = product['brand'] if 'brand' in product else 'Без бренду'
+            if brand not in brands:
+                brands[brand] = []
+            brands[brand].append(product)
 
-        products_text += f"## Доступні ID товарів: {', '.join(product_ids)}\n\n"
-        products_text += "## Детальна інформація про кожен товар:\n\n"
+        for brand, brand_products in brands.items():
+            products_text += f"## Бренд: {brand}\n"
+            for product in brand_products:
+                description = product['description'] if 'description' in product else "Опис відсутній"
 
-        for product in products:
-            description = "Опис відсутній"
-            if 'description' in product and product['description']:
-                description = product['description']
-
-            if 'id' in product and 'name' in product and 'brand' in product and 'price' in product:
                 product_info = (
                     f"- ID: {product['id']}\n"
                     f"  Назва: {product['name']}\n"
-                    f"  Бренд: {product['brand']}\n"
                     f"  Ціна: {product['price']} грн\n"
                     f"  Опис: {description}\n"
                 )
                 products_text += product_info + "\n"
 
-        products_text += "\nВАЖЛИВО! Не вигадуй товари та ID! Використовуй тільки ці моделі!"
+        products_text += "\nВАЖЛИВО! Рекомендуй товари ТІЛЬКИ з цього списку і надавай точну інформацію про них!"
         return products_text
 
     def _build_system_instruction(self, user_id):
@@ -110,13 +107,16 @@ class GeminiAIService(BaseAIService):
                 system_instruction=system_instruction
             )
 
+            product_keywords = ['квадроцикл', 'товар', 'модель', 'бренд', 'каталог', 'ціна']
+            is_product_query = any(keyword in user_message.lower() for keyword in product_keywords)
+
             context = self.get_context_for_user(user_id)
 
-            if context and len(context) > 0:
+            if is_product_query or not context or len(context) == 0:
+                response = model.generate_content(user_message)
+            else:
                 chat = model.start_chat(history=context)
                 response = chat.send_message(user_message)
-            else:
-                response = model.generate_content(user_message)
 
             response_text = response.text
 
