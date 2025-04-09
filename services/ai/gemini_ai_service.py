@@ -54,32 +54,26 @@ class GeminiAIService(BaseAIService):
 
     def _get_products_info(self):
         products = list_all_products()
+
         if not products:
             return "В каталозі наразі немає товарів."
 
         products_text = "УВАГА! В нашому магазині наразі доступні тільки наступні моделі квадроциклів:\n\n"
 
-        brands = {}
         for product in products:
-            brand = product['brand'] if 'brand' in product else 'Без бренду'
-            if brand not in brands:
-                brands[brand] = []
-            brands[brand].append(product)
+            product_dict = dict(product)
 
-        for brand, brand_products in brands.items():
-            products_text += f"## Бренд: {brand}\n"
-            for product in brand_products:
-                description = product['description'] if 'description' in product else "Опис відсутній"
+            description = product_dict.get('description', "Опис відсутній")
 
-                product_info = (
-                    f"- ID: {product['id']}\n"
-                    f"  Назва: {product['name']}\n"
-                    f"  Ціна: {product['price']} грн\n"
-                    f"  Опис: {description}\n"
-                )
-                products_text += product_info + "\n"
+            products_text += (
+                f"## Бренд: {product_dict.get('brand', 'Без бренду')}\n"
+                f"- ID: {product_dict.get('id', 'Невідомо')}\n"
+                f"  Назва: {product_dict.get('name', 'Без назви')}\n"
+                f"  Ціна: {product_dict.get('price', 'Ціна не вказана')} грн\n"
+                f"  Опис: {description}\n\n"
+            )
 
-        products_text += "\nВАЖЛИВО! Рекомендуй товари ТІЛЬКИ з цього списку і надавай точну інформацію про них!"
+        products_text += "ВАЖЛИВО! Рекомендуй товари ТІЛЬКИ з цього списку і надавай точну інформацію про них!"
         return products_text
 
     def _build_system_instruction(self, user_id):

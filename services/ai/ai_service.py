@@ -11,7 +11,6 @@ async def ask_ai(user_id, user_question):
         'aiogram', 'api', 'система', 'функц', 'createbot'
     ]
 
-    # Проверяем, является ли вопрос не связанным с квадроциклами
     if any(keyword in user_question.lower() for keyword in non_quad_keywords):
         return "Я можу допомогти тільки з вибором квадроциклу. Якщо у вас є питання щодо моделей, характеристик або оформлення замовлення - із задоволенням відповім!"
 
