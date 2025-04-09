@@ -16,19 +16,20 @@ services:
     restart: unless-stopped
 
 
-  fish-shop-telebot:
-    container_name: fish-shop-telebot
-    build:
-      context: .
-      dockerfile: Dockerfile
-    environment:
-      BOT_TOKEN: ${FISH_TOKEN}
-      DB_PATH: "/sqlite/fish_shop.db"
-      ADMIN_IDS: ${ADMIN_IDS}
-      PAYMENT_TOKEN: ${FISH_PAYMENT_TOKEN}
-    restart: unless-stopped
-    volumes:
-      - sqlite_data:/sqlite
+#  fish-shop-telebot:
+#    container_name: fish-shop-telebot
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    environment:
+#      BOT_TOKEN: ${FISH_TOKEN}
+#      DB_PATH: "/sqlite/fish_shop.db"
+#      ADMIN_IDS: ${ADMIN_IDS}
+#      PAYMENT_TOKEN: ${FISH_PAYMENT_TOKEN}
+#      TZ: Europe/Kiev
+#    restart: unless-stopped
+#    volumes:
+#      - sqlite_data:/sqlite
 
 
   quad-bike-shop-aiogram:
@@ -41,6 +42,7 @@ services:
       DB_PATH: "/sqlite/quad_shop.db"
       ADMIN_IDS: ${ADMIN_IDS}
       PAYMENT_TOKEN: ${QUAD_PAYMENT_TOKEN}
+      TZ: Europe/Kiev
     restart: unless-stopped
     volumes:
       - sqlite_data:/sqlite
