@@ -1,10 +1,11 @@
 import google.generativeai as genai
 
+from data.ai_instructions import BRANDS_TEMPLATE, PRODUCTS_CONTEXT_TEMPLATE, SYSTEM_INSTRUCTIONS
 from data.config import GEMINI_API_KEY
 from services.ai.ai_context_manager import AIContextManager
 from services.ai.base_ai_service import BaseAIService
 
-from services.product_service import list_all_products, get_top_products, get_all_brands, get_product
+from services.product_service import list_all_products, get_top_products, get_all_brands
 from services.user_service import get_user_by_id
 from services.order_service import get_user_orders
 from utils.safe_dict import safe_dict
@@ -16,53 +17,64 @@ class GeminiAIService(BaseAIService):
         self.model_name = model_name
         self.context_manager = AIContextManager(max_context_length)
 
+    def _format_order_history(self, orders):
+        if not orders:
+            return "\n# ІСТОРІЯ ЗАМОВЛЕНЬ КОРИСТУВАЧА\n- У користувача ще немає замовлень\n"
 
+        order_history = "\n# ІСТОРІЯ ЗАМОВЛЕНЬ КОРИСТУВАЧА\n"
+        for order in orders[:3]:
+            order_dict = safe_dict(order)
+            if all(key in order_dict for key in ['id', 'total_price', 'created_at']):
+                order_history += (
+                    f"- Замовлення #{order_dict['id']}: "
+                    f"сума {order_dict['total_price']} грн, "
+                    f"створено {order_dict['created_at']}\n"
+                )
+        return order_history
 
-    def _get_user_info(self, user_id):
+    def _format_top_products(self, top_products):
+        if not top_products:
+            return "\n# ПОПУЛЯРНІ ТОВАРИ\n- Немає популярних товарів\n"
+
+        top_products_info = "\n# ПОПУЛЯРНІ ТОВАРИ\n"
+        for product in top_products:
+            product_dict = safe_dict(product)
+            if all(key in product_dict for key in ['name', 'brand', 'price', 'id']):
+                top_products_info += (
+                    f"- ID: {product_dict['id']}, "
+                    f"{product_dict['name']} ({product_dict['brand']}): "
+                    f"{product_dict['price']} грн\n"
+                )
+
+                if 'description' in product_dict and product_dict['description']:
+                    short_desc = product_dict['description'][:100] + '...' if len(
+                        product_dict['description']) > 100 else product_dict['description']
+                    top_products_info += f"  Опис: {short_desc}\n"
+        return top_products_info
+
+    def _build_user_profile(self, user_id):
         try:
             user = get_user_by_id(user_id)
             user_dict = safe_dict(user)
 
             user_name = user_dict.get("full_name", 'Невідомий користувач')
-
             orders = get_user_orders(user_id)
             top_products = get_top_products(3)
 
-            user_info = f"""
-    # ІНФОРМАЦІЯ ПРО КОРИСТУВАЧА
-    - ID: {user_id}
-    - Ім'я: {user_name}
-    """
-
-            if orders and len(orders) > 0:
-                user_info += "\n# ІСТОРІЯ ЗАМОВЛЕНЬ КОРИСТУВАЧА\n"
-                for order in orders[:3]:
-                    order_dict = safe_dict(order)
-                    if 'id' in order_dict and 'total_price' in order_dict and 'created_at' in order_dict:
-                        user_info += f"- Замовлення #{order_dict['id']}: сума {order_dict['total_price']} грн, створено {order_dict['created_at']}\n"
-            else:
-                user_info += "\n# ІСТОРІЯ ЗАМОВЛЕНЬ КОРИСТУВАЧА\n- У користувача ще немає замовлень\n"
-
-            if top_products and len(top_products) > 0:
-                user_info += "\n# ПОПУЛЯРНІ ТОВАРИ\n"
-                for product in top_products:
-                    product_dict = safe_dict(product)
-                    if 'name' in product_dict and 'brand' in product_dict and 'price' in product_dict and 'id' in product_dict:
-                        user_info += f"- ID: {product_dict['id']}, {product_dict['name']} ({product_dict['brand']}): {product_dict['price']} грн\n"
-                        if 'description' in product_dict and product_dict['description']:
-                            short_desc = product_dict['description'][:100] + '...' if len(
-                                product_dict['description']) > 100 else \
-                                product_dict['description']
-                            user_info += f"  Опис: {short_desc}\n"
-            else:
-                user_info += "\n# ПОПУЛЯРНІ ТОВАРИ\n- Немає популярних товарів\n"
+            user_info = (
+                f"# ІНФОРМАЦІЯ ПРО КОРИСТУВАЧА\n"
+                f"- ID: {user_id}\n"
+                f"- Ім'я: {user_name}\n"
+            )
+            user_info += self._format_order_history(orders)
+            user_info += self._format_top_products(top_products)
 
             return user_info
         except Exception as e:
-            print(f"Error in _get_user_info: {e}")
+            print(f"Error in _build_user_profile: {e}")
             return "# ІНФОРМАЦІЯ ПРО КОРИСТУВАЧА\n- Не вдалося отримати інформацію про користувача"
 
-    def _get_products_info(self):
+    def _generate_products_catalog(self):
         products = list_all_products()
 
         if not products:
@@ -72,7 +84,6 @@ class GeminiAIService(BaseAIService):
 
         for product in products:
             product_dict = safe_dict(product)
-
             description = product_dict.get('description', "Опис відсутній")
 
             products_text += (
@@ -86,25 +97,41 @@ class GeminiAIService(BaseAIService):
         products_text += "ВАЖЛИВО! Рекомендуй товари ТІЛЬКИ з цього списку і надавай точну інформацію про них!"
         return products_text
 
-    def _build_system_instruction(self, user_id):
-        from data.ai_instructions import SYSTEM_INSTRUCTIONS, PRODUCTS_CONTEXT_TEMPLATE, BRANDS_TEMPLATE
-
+    def _prepare_system_instruction(self, user_id):
         available_brands = get_all_brands()
         brands_list = ", ".join(available_brands) if available_brands else "Немає доступних брендів"
 
         brands_info = BRANDS_TEMPLATE.format(brands_list=brands_list)
-
-        user_info = self._get_user_info(user_id)
-        products_info = self._get_products_info()
+        user_info = self._build_user_profile(user_id)
+        products_info = self._generate_products_catalog()
         products_context = PRODUCTS_CONTEXT_TEMPLATE.format(products_info=products_info)
 
-        full_instruction = f"{SYSTEM_INSTRUCTIONS}\n\n{brands_info}\n\n{user_info}\n\n{products_context}"
+        return f"{SYSTEM_INSTRUCTIONS}\n\n{brands_info}\n\n{user_info}\n\n{products_context}"
 
-        return full_instruction
+    def _find_recommended_product(self, response_text):
+        products = list_all_products()
+        for product in products:
+            product_dict = safe_dict(product)
+            product_name = product_dict.get('name', '').lower()
+            if product_name in response_text.lower():
+                return product_dict
+        return None
+
+    def _create_product_details(self, product):
+        if not product:
+            return "Вибачте, інформація про товар недоступна."
+
+        return (
+            f"Детальна інформація про {product.get('name', 'Товар')}:\n"
+            f"🏷️ Бренд: {product.get('brand', 'Не вказано')}\n"
+            f"💰 Ціна: {product.get('price', 'Не вказано')} грн\n"
+            f"📝 Опис: {product.get('description', 'Детальний опис відсутній')}\n"
+            f"🖼️ Фото: {product.get('photo_url', 'Немає фото')}"
+        )
 
     async def generate_response(self, user_id, user_message, user_data=None):
         try:
-            system_instruction = self._build_system_instruction(user_id)
+            system_instruction = self._prepare_system_instruction(user_id)
 
             model = genai.GenerativeModel(
                 model_name=self.model_name,
@@ -117,28 +144,21 @@ class GeminiAIService(BaseAIService):
             context = self.get_context_for_user(user_id)
             last_product = self.context_manager.get_last_product(user_id)
 
-            # Перевірка, чи йдеться про останній рекомендований товар
-            if last_product and ('деталі' in user_message.lower() or 'більше' in user_message.lower() or
-                                 'розкажи' in user_message.lower() or 'інформація' in user_message.lower()):
-                detailed_product_info = self._get_detailed_product_info(last_product)
+            detail_keywords = ['деталі', 'більше', 'розкажи', 'інформація']
+            is_detail_request = last_product and any(keyword in user_message.lower() for keyword in detail_keywords)
 
-                # Генеруємо розширену відповідь про товар
+            if is_detail_request:
+                detailed_product_info = self._create_product_details(last_product)
                 chat = model.start_chat(history=context)
                 response = chat.send_message(f"Розкажи більше про цей товар: {detailed_product_info}")
-                response_text = response.text
 
-                # Оновлюємо контекст без повторного збереження товару
-                self.context_manager.add_exchange(user_id, user_message, response_text)
-                return response_text
+                self.context_manager.add_exchange(user_id, user_message, response.text)
+                return response.text
 
-            # Якщо це запит про товар або немає контексту, генеруємо нову відповідь
             if is_product_query or not context or len(context) == 0:
                 response = model.generate_content(user_message)
+                recommended_product = self._find_recommended_product(response.text)
 
-                # Намагаємось витягти товар з відповіді
-                recommended_product = self._extract_recommended_product(response.text)
-
-                # Оновлюємо контекст з відповіддю та потенційним товаром
                 self.context_manager.add_exchange(
                     user_id,
                     user_message,
@@ -146,48 +166,16 @@ class GeminiAIService(BaseAIService):
                     last_product=recommended_product
                 )
             else:
-                # Продовження існуючої розмови
                 chat = model.start_chat(history=context)
                 response = chat.send_message(user_message)
-
-                # Оновлюємо контекст
                 self.context_manager.add_exchange(user_id, user_message, response.text)
 
-            response_text = response.text
-            return response_text
+            return response.text
 
         except Exception as e:
             error_message = f"Сталася помилка при зверненні до AI: {str(e)}"
             print(f"Gemini API error: {str(e)}")
             return error_message
-
-    def _extract_recommended_product(self, response_text):
-        """
-        Намагається витягти ID товару з відповіді AI.
-        """
-        products = list_all_products()
-        for product in products:
-            product_dict = safe_dict(product)
-            product_name = product_dict.get('name', '').lower()
-            if product_name in response_text.lower():
-                return product_dict
-
-        return None
-
-    def _get_detailed_product_info(self, product):
-        """
-        Генерує детальний опис товару.
-        """
-        if not product:
-            return "Вибачте, інформація про товар недоступна."
-
-        return (
-            f"Детальна інформація про {product.get('name', 'Товар')}:\n"
-            f"🏷️ Бренд: {product.get('brand', 'Не вказано')}\n"
-            f"💰 Ціна: {product.get('price', 'Не вказано')} грн\n"
-            f"📝 Опис: {product.get('description', 'Детальний опис відсутній')}\n"
-            f"🖼️ Фото: {product.get('photo_url', 'Немає фото')}"
-        )
 
     def get_context_for_user(self, user_id):
         return self.context_manager.get_context(user_id)

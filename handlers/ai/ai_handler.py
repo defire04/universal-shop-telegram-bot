@@ -76,7 +76,6 @@ async def clear_ai_context(callback_query: CallbackQuery, state: FSMContext):
 async def process_ai_question(message: Message, state: FSMContext):
     user_id = message.from_user.id
 
-    # Проверка на меню-команды
     menu_handlers = {
         "🏠 Головне меню": lambda: show_main_menu(message),
         "🏍️ Каталог": lambda: show_catalog_logic(message),
@@ -90,10 +89,6 @@ async def process_ai_question(message: Message, state: FSMContext):
         await state.clear()
         handler = menu_handlers[message.text]
         return await handler()
-
-    product_keywords = ['квадроцикл', 'товар', 'модель', 'бренд', 'каталог', 'ціна', 'цена', 'расскажи', 'товары']
-    if any(keyword in message.text.lower() for keyword in product_keywords):
-        clear_user_context(user_id)
 
     await message.answer(AI_HELPER_THINKING)
 
