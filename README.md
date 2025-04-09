@@ -1,143 +1,180 @@
-# Quad Bike Shop Telegram Bot (aiogram)
+# Universal Shop Telegram Bot
 
-This repository contains a Telegram bot for selling quad bikes (ATVs) using **aiogram 3.x**. It provides a dynamic product catalog, a shopping cart flow, an order checkout process, and an admin panel for managing products and viewing orders.
+A flexible, feature-rich Telegram bot built with **aiogram 3.x** that can be easily adapted for any type of online store. Currently configured as a Quad Bike Shop, but can be customized for any product category by modifying text constants and AI instructions.
 
+## Features
 
-## Key Features
+### Customer Features
+- **Dynamic Product Catalog**
+  - Browse products by brand/category
+  - Detailed product pages with images, descriptions, and pricing
+  - Navigation between products with previous/next controls
 
-- **Dynamic Catalog**  
-  - Multiple brands, added via the admin panel  
-  - Products can have names, prices, brands, and photo URLs
+- **Smart Shopping Cart**
+  - Add products with quantity selection
+  - View, edit, and clear cart contents
+  - Real-time total calculation
 
-- **Shopping Cart**  
-  - Users can adjust the quantity before adding an item to the cart  
-  - The bot tracks items for each user in a dedicated cart
+- **Comprehensive Order System**
+  - Multi-step checkout process with validation
+  - Multiple delivery options (Courier, Nova Poshta, UkrPoshta, Pickup)
+  - Multiple payment methods (Pay now, Pay on delivery)
+  - Order confirmation and history
 
-- **Order Checkout**  
-  - Collects user’s full name, phone number, comment, and delivery preferences (e.g., Nova Poshta, UkrPoshta, Courier, or Pickup)  
-  - Stores the final order in an SQLite database
+- **AI Assistance**
+  - Integrated AI helper powered by Google's Gemini
+  - Product recommendations based on user preferences
+  - Smart responses to product inquiries
+  - Contextual conversation memory
 
-- **Admin Panel**  
-  - Add products by specifying name, price, brand, and photo URL  
-  - List all products (with IDs) and remove products by ID  
-  - View orders (with user contact info, full name, address/delivery details)  
-  - Show basic statistics (number of orders, total revenue)
+- **Customer Support**
+  - Contact information with social media links
+  - Feedback collection system
+  - Help documentation
 
-- **User-Friendly Interface**  
-  - ReplyKeyboard for quick commands (Catalog, Cart, My Orders, Admin Menu if the user is an admin)  
-  - InlineKeyboard for in-message navigation (selecting brands, adding to cart, confirming orders, etc.)  
-  - Optional sticker usage, random greetings, and friendlier messages
+### Admin Features
+- **Product Management**
+  - Add new products with detailed information
+  - List, edit, and remove products
+  - Organize products by brand/category
 
-## System Requirements
+- **Order Management**
+  - View all orders with detailed customer information
+  - Paginated order listing
+  - Track payment status
+
+- **Customer Feedback**
+  - View and manage customer feedback
+  - Paginated feedback listing
+
+- **Analytics**
+  - Basic statistics on orders and revenue
+  - Most popular products tracking
+
+## Technology Stack
 
 - **Python 3.12**
-- **aiogram 3.18.0** (or similar 3.x version)
-- **SQLite** for data storage (bundled with Python)
+- **aiogram 3.18.0** (Telegram Bot Framework)
+- **SQLite** for data storage
+- **Google Gemini API** for AI assistant functionality
+- **Docker** support for containerization
 
 ## Project Structure
- ```bash
-quad-bike-shop-aiogram/
-├── bot.py
-├── requirements.txt
-├── Dockerfile
-├── data/
-│   ├── config.py
-│   └── db.py
-├── repositories/
+
+```
+universal-shop-bot/
+├── bot.py                 # Main entry point
+├── Dockerfile             # Docker configuration
+├── docker-compose.yml     # Multi-container setup
+├── requirements.txt       # Dependencies
+│
+├── data/                  # Configuration and constants
+│   ├── ai_instructions.py # AI assistant instructions
+│   ├── bot_texts.py       # Customizable text messages
+│   ├── config.py          # Bot configuration
+│   └── db.py              # Database initialization
+│
+├── handlers/              # Telegram message handlers
+│   ├── admin/             # Admin panel handlers
+│   ├── ai/                # AI assistant handlers
+│   ├── cart/              # Shopping cart handlers
+│   ├── contact/           # Contact & feedback handlers
+│   ├── user/              # User interaction handlers
+│   └── fallback.py        # Fallback handler
+│
+├── keyboards/             # UI components
+│   ├── inline.py          # Inline keyboard layouts
+│   └── reply.py           # Reply keyboard layouts
+│
+├── repositories/          # Database access layer
+│   ├── feedback_repository.py
+│   ├── order_repository.py
 │   ├── product_repository.py
-│   └── order_repository.py
-│   └── user_repository
-├── services/
+│   └── user_repository.py
+│
+├── services/              # Business logic layer
+│   ├── ai/                # AI service components
+│   ├── feedback_service.py
+│   ├── order_service.py
 │   ├── product_service.py
-│   └── order_service.py
 │   └── user_service.py
-├── keyboards/
-│   ├── inline.py
-│   └── reply.py
-├── handlers/
-│   ├── user_menu.py
-│   ├── cart.py
-│   ├── admin_menu.py
-│   └── fallback.py
-└── ...
- ```
+│
+└── utils/                 # Utility functions
+    └── safe_dict.py
+```
+
+## Customization
+
+This bot is designed to be universally adaptable for any type of online store:
+
+1. **Change Product Type**: Modify text constants in `data/bot_texts.py` to match your product category
+2. **Customize AI Assistant**: Update instructions in `data/ai_instructions.py` to reflect your product knowledge
+3. **Adapt Database**: The schema is flexible enough for various product types
+4. **Modify UI**: Keyboards can be customized in `keyboards/` directory
+
+The architecture separates concerns into:
+- Repositories (data access)
+- Services (business logic)
+- Handlers (bot interaction)
+
+This makes it easy to modify any layer without affecting others.
+
 ## Installation
 
 1. **Clone the repository**:
 ```bash
-  git clone -b quad-bike-shop-aiogram --single-branch https://github.com/defire04/universal-shop-telegram-bot.git quad-bike-shop-aiogram
-  ```
+git clone https://github.com/username/universal-shop-bot.git
+cd universal-shop-bot
+```
 
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+2. **Set up environment variables**:
+Create a `.env` file with:
+```
+BOT_TOKEN=your_telegram_bot_token
+ADMIN_IDS=comma,separated,admin,ids
+GEMINI_API_KEY=your_google_gemini_api_key
+PAYMENT_TOKEN=your_payment_token
+```
 
-3. **Set your bot token** in `data/config.py`:
-   ```python
-   BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-   ```
+3. **Install dependencies**:
+```bash
+pip install -r requirements.txt
+```
 
-
-## Running the Bot
-
+4. **Run the bot**:
 ```bash
 python bot.py
 ```
 
-In Telegram, type `/start` to interact with your bot.
+## Docker Deployment
 
-## Docker Usage
-
-If you prefer Docker, use the provided **Dockerfile**:
+For containerized deployment:
 
 ```bash
-docker build -t quad-bike-shop-aiogram .
-docker run -it --rm quad-bike-shop-aiogram
+docker-compose up -d
 ```
 
-Adjust the `BOT_TOKEN` by editing `data/config.py` or using an environment variable approach before building.
+This will start:
+- The bot container
+- An SQLiteBrowser container for database management
 
 ## Usage
 
-* **Regular users**:
-   * `/start` for a friendly greeting
-   * **Catalog**: see a list of brands, choose products, add to cart
-   * **Cart**: view items, clear, or finalize an order by providing personal info and delivery preferences
-   * **My Orders**: check past orders
+### For Customers
+- `/start` - Begin interaction with the bot
+- `/help` - View available commands
+- `/catalog` - Browse products
+- `/cart` - View shopping cart
+- `/orders` - View order history
+- `/contact` - View contact information
+- `/feedback` - Leave feedback
+- `/ai` - Interact with AI assistant
 
-* **Admins**:
-   * `/admin` or "Адмін-меню" (if `ADMIN_IDS` includes the user ID)
-   * Add products (`Name|Price|Brand|PhotoURL`)
-   * Remove products by ID
-   * View orders (with contact info)
-   * Basic stats (number of orders, total sum)
+### For Administrators
+- `/admin` - Access admin panel
+- Add products with format: `Name|Price|Brand|Description|PhotoURL`
+- View orders, statistics, and customer feedback
 
+## License
 
-
-# Structure plan for the admin folder:
-admin/
-├── __init__.py         - Exports the router and initializes handlers
-├── router.py           - Main router definition and shared variables
-├── product_manage.py   - Product management (add, list, delete)
-├── order_manage.py     - Orders listing and statistics
-└── state.py            - AdminStates definition
-
-# Structure plan for the cart folder:
-cart/
-├── __init__.py         - Exports the router and initializes handlers
-├── router.py           - Main router definition and shared variables
-├── product_view.py     - Product view and quantity handlers
-├── cart_management.py  - Cart view and management (clear, etc.)
-├── order_process.py    - Order processing and payment
-└── state.py            - OrderStates definition
-
-# Structure plan for the user folder:
-users/
-├── __init__.py - Exports the router and initializes handlers
-├── router.py - Main router definition and shared variables
-├── start.py - Start command and greeting handlers
-├── main_menu.py - Main menu navigation
-├── catalog.py - Catalog browsing and brand selection
-├── orders.py - Order history viewing 
-└── admin_access.py - Admin menu access check
+MIT License
