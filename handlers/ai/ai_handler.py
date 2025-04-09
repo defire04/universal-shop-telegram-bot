@@ -14,15 +14,21 @@ from data.bot_texts import (
 from services.ai.ai_service import clear_user_context, ask_ai
 from .router import ai_router
 
+# Import all required handlers at the module level
+from handlers.user.main_menu import show_main_menu
+from handlers.user.catalog import show_catalog_logic
+from handlers.cart.cart_management import show_cart
+from handlers.user.orders import show_user_orders
+from handlers.contact.contact_menu import text_contact
+from handlers.user.admin_access import access_admin_menu
+
 
 class AIAssistantStates(StatesGroup):
-    """Стани для роботи з AI асистентом"""
     waiting_for_question = State()
 
 
 @ai_router.message(F.text == "🤖 AI помічник")
 async def start_ai_assistant(message: Message, state: FSMContext):
-    """Початок роботи з AI помічником"""
     ai_emoji = random.choice(["🤖", "🧠", "💬", "🔍"])
     user_id = message.from_user.id
 
@@ -40,7 +46,6 @@ async def start_ai_assistant(message: Message, state: FSMContext):
     kb.adjust(1)
     keyboard = kb.as_markup()
 
-    # Используем текст с bot_texts.py
     await message.answer(
         AI_HELPER_WELCOME.format(ai_emoji=ai_emoji),
         parse_mode="Markdown",
@@ -67,54 +72,24 @@ async def clear_ai_context(callback_query: CallbackQuery, state: FSMContext):
     )
 
 
-@ai_router.callback_query(F.data == "menu_catalog")
-async def ai_to_catalog(callback_query: CallbackQuery, state: FSMContext):
-    # Просто очищаем состояние AI и отвечаем на callback
-    await state.clear()
-    await callback_query.answer()
-
-    try:
-        # Вызываем напрямую нужный обработчик, а не полагаемся на роутинг
-        from handlers.user.catalog import show_catalog_logic
-        await show_catalog_logic(callback_query.message)
-        await callback_query.message.delete()
-    except Exception as e:
-        print(f"Error in menu navigation: {str(e)}")
-
-
 @ai_router.message(AIAssistantStates.waiting_for_question)
 async def process_ai_question(message: Message, state: FSMContext):
     user_id = message.from_user.id
 
-    if message.text == "🏠 Головне меню":
-        await state.clear()
-        from handlers.user.main_menu import show_main_menu
-        return await show_main_menu(message)
+    menu_handlers = {
+        "🏠 Головне меню": lambda: show_main_menu(message),
+        "🏍️ Каталог": lambda: show_catalog_logic(message),
+        "🛒 Переглянути кошик": lambda: show_cart(message, user_id),
+        "📋 Мої замовлення": lambda: show_user_orders(message),
+        "📞 Зв'язатися з нами": lambda: text_contact(message),
+        "⚙️ Адмін-меню": lambda: access_admin_menu(message)
+    }
 
-    if message.text == "🏍️ Каталог":
+    if message.text in menu_handlers:
         await state.clear()
-        from handlers.user.catalog import show_catalog_logic
-        return await show_catalog_logic(message)
 
-    if message.text == "🛒 Переглянути кошик":
-        await state.clear()
-        from handlers.cart.cart_management import show_cart
-        return await show_cart(message, user_id)
-
-    if message.text == "📋 Мої замовлення":
-        await state.clear()
-        from handlers.user.orders import show_user_orders
-        return await show_user_orders(message)
-
-    if message.text == "📞 Зв'язатися з нами":
-        await state.clear()
-        from handlers.contact.contact_menu import text_contact
-        return await text_contact(message)
-
-    if message.text == "⚙️ Адмін-меню":
-        await state.clear()
-        from handlers.user.admin_access import access_admin_menu
-        return await access_admin_menu(message)
+        handler = menu_handlers[message.text]
+        return await handler()
 
     await message.answer(AI_HELPER_THINKING)
 
