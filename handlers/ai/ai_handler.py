@@ -67,16 +67,54 @@ async def clear_ai_context(callback_query: CallbackQuery, state: FSMContext):
     )
 
 
+@ai_router.callback_query(F.data == "menu_catalog")
+async def ai_to_catalog(callback_query: CallbackQuery, state: FSMContext):
+    # Просто очищаем состояние AI и отвечаем на callback
+    await state.clear()
+    await callback_query.answer()
+
+    try:
+        # Вызываем напрямую нужный обработчик, а не полагаемся на роутинг
+        from handlers.user.catalog import show_catalog_logic
+        await show_catalog_logic(callback_query.message)
+        await callback_query.message.delete()
+    except Exception as e:
+        print(f"Error in menu navigation: {str(e)}")
+
+
 @ai_router.message(AIAssistantStates.waiting_for_question)
 async def process_ai_question(message: Message, state: FSMContext):
     user_id = message.from_user.id
 
-    if message.text and message.text in [
-        "🏠 Головне меню", "🏍️ Каталог", "🛒 Переглянути кошик",
-        "📋 Мої замовлення", "📞 Зв'язатися з нами", "⚙️ Адмін-меню"
-    ]:
+    if message.text == "🏠 Головне меню":
         await state.clear()
-        return
+        from handlers.user.main_menu import show_main_menu
+        return await show_main_menu(message)
+
+    if message.text == "🏍️ Каталог":
+        await state.clear()
+        from handlers.user.catalog import show_catalog_logic
+        return await show_catalog_logic(message)
+
+    if message.text == "🛒 Переглянути кошик":
+        await state.clear()
+        from handlers.cart.cart_management import show_cart
+        return await show_cart(message, user_id)
+
+    if message.text == "📋 Мої замовлення":
+        await state.clear()
+        from handlers.user.orders import show_user_orders
+        return await show_user_orders(message)
+
+    if message.text == "📞 Зв'язатися з нами":
+        await state.clear()
+        from handlers.contact.contact_menu import text_contact
+        return await text_contact(message)
+
+    if message.text == "⚙️ Адмін-меню":
+        await state.clear()
+        from handlers.user.admin_access import access_admin_menu
+        return await access_admin_menu(message)
 
     await message.answer(AI_HELPER_THINKING)
 
