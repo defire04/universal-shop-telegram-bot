@@ -1,12 +1,9 @@
-from typing import Any, Awaitable, Callable, Dict, List
+from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery
 
-BLOCKED_USER_IDS: List[int] = [
-    808536694,
-    340880271
-]
+from data.config import BLOCKED_USER_IDS
 
 
 class SimpleBlockedUsersMiddleware(BaseMiddleware):
