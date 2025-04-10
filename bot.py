@@ -12,6 +12,7 @@ from handlers.cart import cart_router
 from handlers.contact import contact_router
 from handlers.fallback import fallback_router
 from handlers.user import user_router
+from middlewares.simple_blocked_users import SimpleBlockedUsersMiddleware
 
 logging.basicConfig(level=logging.INFO)
 
@@ -22,6 +23,9 @@ async def main():
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties())
 
     dp = Dispatcher()
+
+    dp.message.middleware(SimpleBlockedUsersMiddleware())
+    dp.callback_query.middleware(SimpleBlockedUsersMiddleware())
 
     dp.include_router(ai_router)
     dp.include_router(cart_router)
