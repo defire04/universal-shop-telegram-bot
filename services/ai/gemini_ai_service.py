@@ -71,7 +71,6 @@ class GeminiAIService(BaseAIService):
 
             return user_info
         except Exception as e:
-            print(f"Error in _build_user_profile: {e}")
             return "# ІНФОРМАЦІЯ ПРО КОРИСТУВАЧА\n- Не вдалося отримати інформацію про користувача"
 
     def _generate_products_catalog(self):
@@ -108,13 +107,61 @@ class GeminiAIService(BaseAIService):
 
         return f"{SYSTEM_INSTRUCTIONS}\n\n{brands_info}\n\n{user_info}\n\n{products_context}"
 
-    def _find_recommended_product(self, response_text):
-        products = list_all_products()
+    def _find_product_by_full_name(self, response_lower, products):
         for product in products:
             product_dict = safe_dict(product)
             product_name = product_dict.get('name', '').lower()
-            if product_name in response_text.lower():
+            product_brand = product_dict.get('brand', '').lower()
+
+            full_product_with_brand = f"{product_name} від {product_brand}"
+            if full_product_with_brand in response_lower:
                 return product_dict
+        return None
+
+    def _find_product_by_model(self, response_lower, products):
+        for product in products:
+            product_dict = safe_dict(product)
+            product_name = product_dict.get('name', '').lower()
+
+            model_words = [word for word in product_name.split()
+                           if len(word) >= 5 and any(c.isdigit() for c in word)]
+
+            for model in model_words:
+                if model in response_lower:
+                    return product_dict
+        return None
+
+    def _find_product_by_name(self, response_lower, products):
+        for product in products:
+            product_dict = safe_dict(product)
+            product_name = product_dict.get('name', '').lower()
+
+            if len(product_name) >= 5 and product_name in response_lower:
+                return product_dict
+        return None
+
+    def _find_recommended_product(self, response_text):
+        if not response_text:
+            return None
+
+        response_lower = response_text.lower()
+        products = list_all_products()
+
+        if not products:
+            return None
+
+        product = self._find_product_by_full_name(response_lower, products)
+        if product:
+            return product
+
+        product = self._find_product_by_model(response_lower, products)
+        if product:
+            return product
+
+        product = self._find_product_by_name(response_lower, products)
+        if product:
+            return product
+
         return None
 
     def _create_product_details(self, product):
@@ -129,6 +176,77 @@ class GeminiAIService(BaseAIService):
             f"🖼️ Фото: {product.get('photo_url', 'Немає фото')}"
         )
 
+    async def _handle_detail_request(self, user_id, user_message, last_product, context, model):
+
+        specific_product = self._find_product_in_user_message(user_message)
+
+        product_to_describe = specific_product if specific_product else last_product
+
+        detailed_product_info = self._create_product_details(product_to_describe)
+        chat = model.start_chat(history=context)
+        response = chat.send_message(f"Розкажи більше про цей товар: {detailed_product_info}")
+
+        self.context_manager.add_exchange(
+            user_id,
+            user_message,
+            response.text,
+            last_product=product_to_describe
+        )
+
+        return response.text
+
+    def _find_product_in_user_message(self, user_message):
+
+        if not user_message:
+            return None
+
+        user_message_lower = user_message.lower()
+        products = list_all_products()
+
+        if not products:
+            return None
+
+        for product in products:
+            product_dict = safe_dict(product)
+            product_name = product_dict.get('name', '').lower()
+            product_brand = product_dict.get('brand', '').lower()
+
+            if product_name in user_message_lower or product_brand in user_message_lower:
+                return product_dict
+
+        for product in products:
+            product_dict = safe_dict(product)
+            product_name = product_dict.get('name', '').lower()
+
+            words = product_name.split()
+            for word in words:
+                if (len(word) >= 5 and
+                        any(c.isdigit() for c in word) and
+                        any(c.isalpha() for c in word) and
+                        word in user_message_lower):
+                    return product_dict
+
+        return None
+
+    async def _handle_product_query(self, user_id, user_message, model):
+        response = model.generate_content(user_message)
+        response_text = response.text
+
+        recommended_product = self._find_recommended_product(response_text)
+        self.context_manager.add_exchange(user_id, user_message, response_text, last_product=recommended_product)
+        return response_text
+
+    async def _handle_normal_chat(self, user_id, user_message, last_product, context, model):
+        chat = model.start_chat(history=context)
+        response = chat.send_message(user_message)
+        response_text = response.text
+
+        new_product = self._find_recommended_product(response_text)
+        product_to_save = new_product if new_product else last_product
+
+        self.context_manager.add_exchange(user_id, user_message, response_text, last_product=product_to_save)
+        return response_text
+
     async def generate_response(self, user_id, user_message, user_data=None):
         try:
             system_instruction = self._prepare_system_instruction(user_id)
@@ -138,43 +256,24 @@ class GeminiAIService(BaseAIService):
                 system_instruction=system_instruction
             )
 
-            product_keywords = ['квадроцикл', 'товар', 'модель', 'бренд', 'каталог', 'ціна']
-            is_product_query = any(keyword in user_message.lower() for keyword in product_keywords)
-
             context = self.get_context_for_user(user_id)
             last_product = self.context_manager.get_last_product(user_id)
 
-            detail_keywords = ['деталі', 'більше', 'розкажи', 'інформація']
+            detail_keywords = ['деталі', 'більше', 'розкажи', 'інформація', 'характеристики']
             is_detail_request = last_product and any(keyword in user_message.lower() for keyword in detail_keywords)
-
             if is_detail_request:
-                detailed_product_info = self._create_product_details(last_product)
-                chat = model.start_chat(history=context)
-                response = chat.send_message(f"Розкажи більше про цей товар: {detailed_product_info}")
+                return await self._handle_detail_request(user_id, user_message, last_product, context, model)
 
-                self.context_manager.add_exchange(user_id, user_message, response.text)
-                return response.text
+            product_keywords = ['квадроцикл', 'товар', 'модель', 'бренд', 'каталог', 'ціна']
+            is_product_query = any(keyword in user_message.lower() for keyword in product_keywords)
 
             if is_product_query or not context or len(context) == 0:
-                response = model.generate_content(user_message)
-                recommended_product = self._find_recommended_product(response.text)
+                return await self._handle_product_query(user_id, user_message, model)
 
-                self.context_manager.add_exchange(
-                    user_id,
-                    user_message,
-                    response.text,
-                    last_product=recommended_product
-                )
-            else:
-                chat = model.start_chat(history=context)
-                response = chat.send_message(user_message)
-                self.context_manager.add_exchange(user_id, user_message, response.text)
-
-            return response.text
+            return await self._handle_normal_chat(user_id, user_message, last_product, context, model)
 
         except Exception as e:
             error_message = f"Сталася помилка при зверненні до AI: {str(e)}"
-            print(f"Gemini API error: {str(e)}")
             return error_message
 
     def get_context_for_user(self, user_id):

@@ -9,12 +9,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from data.bot_texts import (
     AI_HELPER_WELCOME, AI_HELPER_THINKING,
-    AI_HELPER_ERROR
+    AI_HELPER_ERROR, AI_MEDIA_NOT_SUPPORTED, AI_CONTEXT_LIMIT_ERROR
 )
 from services.ai.ai_service import clear_user_context, ask_ai
 from .router import ai_router
 
-# Import all required handlers at the module level
 from handlers.user.main_menu import show_main_menu
 from handlers.user.catalog import show_catalog_logic
 from handlers.cart.cart_management import show_cart
@@ -27,13 +26,7 @@ class AIAssistantStates(StatesGroup):
     waiting_for_question = State()
 
 
-@ai_router.message(F.text == "🤖 AI помічник")
-async def start_ai_assistant(message: Message, state: FSMContext):
-    ai_emoji = random.choice(["🤖", "🧠", "💬", "🔍"])
-    user_id = message.from_user.id
-
-    clear_user_context(user_id)
-
+def get_ai_keyboard():
     kb = InlineKeyboardBuilder()
     kb.button(
         text="📋 Переглянути каталог",
@@ -44,12 +37,20 @@ async def start_ai_assistant(message: Message, state: FSMContext):
         callback_data="ai_clear_context"
     )
     kb.adjust(1)
-    keyboard = kb.as_markup()
+    return kb.as_markup()
+
+
+@ai_router.message(F.text == "🤖 AI помічник")
+async def start_ai_assistant(message: Message, state: FSMContext):
+    ai_emoji = random.choice(["🤖", "🧠", "💬", "🔍"])
+    user_id = message.from_user.id
+
+    clear_user_context(user_id)
 
     await message.answer(
         AI_HELPER_WELCOME.format(ai_emoji=ai_emoji),
         parse_mode="Markdown",
-        reply_markup=keyboard
+        reply_markup=get_ai_keyboard()
     )
 
     await state.set_state(AIAssistantStates.waiting_for_question)
@@ -71,6 +72,14 @@ async def clear_ai_context(callback_query: CallbackQuery, state: FSMContext):
         "✅ Історію нашої розмови було очищено. Тепер ми можемо почати спілкування з чистого аркушу."
     )
 
+@ai_router.message(AIAssistantStates.waiting_for_question, F.photo | F.document | F.video | F.voice | F.audio | F.sticker | F.animation)
+async def handle_media_message(message: Message, state: FSMContext):
+    await message.answer(
+        AI_MEDIA_NOT_SUPPORTED,
+        parse_mode="Markdown",
+        reply_markup=get_ai_keyboard()
+    )
+
 
 @ai_router.message(AIAssistantStates.waiting_for_question)
 async def process_ai_question(message: Message, state: FSMContext):
@@ -90,39 +99,30 @@ async def process_ai_question(message: Message, state: FSMContext):
         handler = menu_handlers[message.text]
         return await handler()
 
-    await message.answer(AI_HELPER_THINKING)
+    thinking_message = await message.answer(AI_HELPER_THINKING)
 
     try:
         ai_response = await ask_ai(user_id, message.text)
 
-        kb = InlineKeyboardBuilder()
-        kb.button(
-            text="📋 Переглянути каталог",
-            callback_data="menu_catalog"
-        )
-        kb.button(
-            text="🔄 Очистити історію розмови",
-            callback_data="ai_clear_context"
-        )
-        kb.adjust(1)
-        keyboard = kb.as_markup()
 
-        if len(ai_response) > 1000:
-            chunks = [ai_response[i:i + 1000] for i in range(0, len(ai_response), 1000)]
-            for i, chunk in enumerate(chunks):
-                if i == len(chunks) - 1:
-                    await message.answer(chunk, parse_mode="Markdown", reply_markup=keyboard)
-                else:
-                    await message.answer(chunk, parse_mode="Markdown")
-        else:
-            await message.answer(ai_response, parse_mode="Markdown", reply_markup=keyboard)
+        await thinking_message.delete()
+        await message.answer(ai_response, parse_mode="Markdown", reply_markup=get_ai_keyboard())
 
     except Exception as e:
-        error_message = f"{AI_HELPER_ERROR}\n\nПомилка: {str(e)}"
-        await message.answer(error_message)
+        error_str = str(e).lower()
 
-        clear_user_context(user_id)
+        if "can't find end of the entity" in error_str or "context limit" in error_str or "limit exceed" in error_str:
+            await message.answer(
+                AI_CONTEXT_LIMIT_ERROR,
+                parse_mode="Markdown",
+                reply_markup=get_ai_keyboard()
+            )
+            clear_user_context(user_id)
+        else:
+            await message.answer(
+                AI_HELPER_ERROR,
+                parse_mode="Markdown",
+                reply_markup=get_ai_keyboard()
+            )
 
-        await message.answer("🔄 Історію розмови було автоматично очищено через помилку.")
-
-        print(f"AI Assistant error: {str(e)}")
+        print(f"AI Assistant error for user {user_id}: {str(e)}")

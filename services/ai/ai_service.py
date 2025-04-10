@@ -1,3 +1,4 @@
+from data.bot_texts import AI_CONTEXT_LIMIT_ERROR
 from services.ai.ai_service_factory import create_ai_service
 
 _ai_service = create_ai_service()
@@ -8,7 +9,9 @@ async def ask_ai(user_id, user_question):
     non_quad_keywords = [
         'код', 'програм', 'бот', 'платіж', 'розробк', 'пиши', 'напиши',
         'telegram', 'python', 'javascript', 'html', 'script', 'платежн',
-        'aiogram', 'api', 'система', 'функц', 'createbot'
+        'aiogram', 'api', 'система', 'функц', 'createbot', 'хакни', 'взломай',
+        'token', 'токен', 'server', 'сервер', 'config', 'конфіг', 'database',
+        'sql', 'inject', 'repository', 'router', 'handler'
     ]
 
     if any(keyword in user_question.lower() for keyword in non_quad_keywords):
@@ -18,9 +21,13 @@ async def ask_ai(user_id, user_question):
         response = await _ai_service.generate_response(user_id, user_question)
         return response
     except Exception as e:
+        error_str = str(e).lower()
+        if "can't find end of the entity" in error_str or "context limit" in error_str or "limit exceed" in error_str:
+            clear_user_context(user_id)
+            return AI_CONTEXT_LIMIT_ERROR
+
         clear_user_context(user_id)
         error_message = f"Сталася помилка при зверненні до AI: {str(e)}"
-        print(f"Gemini API error: {str(e)}")
         return error_message
 
 

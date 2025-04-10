@@ -13,7 +13,8 @@ class AIContextManager:
         if user_id not in self.user_contexts:
             self.user_contexts[user_id] = []
 
-        if last_product:
+        if last_product is not None:
+            # print(f"Saving product for user {user_id}: {last_product.get('name', 'Unknown')}")
             self.user_last_products[user_id] = last_product
 
         self.user_contexts[user_id].append({
@@ -30,7 +31,8 @@ class AIContextManager:
             self.user_contexts[user_id] = self.user_contexts[user_id][-(self.max_context_length * 2):]
 
     def get_last_product(self, user_id):
-        return self.user_last_products.get(user_id)
+        product = self.user_last_products.get(user_id)
+        return product
 
     def clear_context(self, user_id):
         if user_id in self.user_contexts:
